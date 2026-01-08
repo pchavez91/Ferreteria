@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Producto, Empresa } from '@/lib/types'
-import { ShoppingCart, Plus, Trash2, Search } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { ShoppingCart, Plus, Trash2, Search, Building2, Package } from 'lucide-react'
+import EmpresaModal from '@/components/EmpresaModal'
 
 export default function CajaPage() {
   const [carrito, setCarrito] = useState<Array<{ producto: Producto; cantidad: number }>>([])
@@ -15,7 +15,7 @@ export default function CajaPage() {
   const [empresaId, setEmpresaId] = useState('')
   const [descuento, setDescuento] = useState('0')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [showEmpresaModal, setShowEmpresaModal] = useState(false)
 
   useEffect(() => {
     loadProductos()
@@ -94,10 +94,27 @@ export default function CajaPage() {
     }, 0)
   }
 
+  const calcularIVA = () => {
+    const subtotal = calcularSubtotal()
+    const desc = parseFloat(descuento) || 0
+    const subtotalConDescuento = Math.max(0, subtotal - desc)
+    return subtotalConDescuento * 0.19
+  }
+
   const calcularTotal = () => {
     const subtotal = calcularSubtotal()
     const desc = parseFloat(descuento) || 0
-    return Math.max(0, subtotal - desc)
+    const subtotalConDescuento = Math.max(0, subtotal - desc)
+    const iva = calcularIVA()
+    return subtotalConDescuento + iva
+  }
+
+  const formatearPeso = (valor: number) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      minimumFractionDigits: 0,
+    }).format(valor)
   }
 
   const generarNumeroFactura = () => {
@@ -127,7 +144,8 @@ export default function CajaPage() {
 
       const subtotal = calcularSubtotal()
       const desc = parseFloat(descuento) || 0
-      const impuesto = 0 // Puedes agregar cálculo de impuestos
+      const subtotalConDescuento = Math.max(0, subtotal - desc)
+      const iva = calcularIVA()
       const total = calcularTotal()
 
       // Crear venta
@@ -138,10 +156,10 @@ export default function CajaPage() {
             numero_factura: generarNumeroFactura(),
             empresa_id: tipoPago === 'factura' ? empresaId : null,
             usuario_id: user.id,
-            tipo_pago: tipoPago,
-            subtotal,
+            tipo_pago: tipoPago === 'tarjeta' ? 'tarjeta' : tipoPago,
+            subtotal: subtotalConDescuento,
             descuento: desc,
-            impuesto,
+            impuesto: iva,
             total,
             estado: 'completada',
           },
@@ -149,9 +167,12 @@ export default function CajaPage() {
         .select()
         .single()
 
-      if (ventaError) throw ventaError
+      if (ventaError) {
+        console.error('Error al crear venta:', ventaError)
+        throw ventaError
+      }
 
-      // Crear detalles de venta y actualizar stock
+      // Crear detalles de venta
       const detalles = carrito.map((item) => {
         const precio = item.cantidad >= item.producto.cantidad_minima_mayor
           ? item.producto.precio_mayor
@@ -171,9 +192,12 @@ export default function CajaPage() {
         .from('detalle_ventas')
         .insert(detalles)
 
-      if (detallesError) throw detallesError
+      if (detallesError) {
+        console.error('Error al crear detalles:', detallesError)
+        throw detallesError
+      }
 
-      // Actualizar stock de productos
+      // Actualizar stock de productos y crear movimientos
       for (const item of carrito) {
         const nuevoStock = item.producto.stock - item.cantidad
         await supabase
@@ -193,7 +217,7 @@ export default function CajaPage() {
         ])
       }
 
-      alert(`Venta procesada exitosamente. Factura: ${venta.numero_factura}`)
+      alert(`Venta procesada exitosamente.\nFactura: ${venta.numero_factura}\nTotal: ${formatearPeso(total)}`)
       setCarrito([])
       setDescuento('0')
       setTipoPago('efectivo')
@@ -201,7 +225,7 @@ export default function CajaPage() {
       loadProductos()
     } catch (error: any) {
       console.error('Error al procesar venta:', error)
-      alert(error.message || 'Error al procesar la venta')
+      alert(`Error al procesar la venta: ${error.message || 'Error desconocido'}`)
     } finally {
       setLoading(false)
     }
@@ -217,84 +241,100 @@ export default function CajaPage() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Panel de Productos */}
       <div className="lg:col-span-2">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Punto de Venta</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Punto de Venta</h1>
+        <p className="text-muted-foreground mb-6">Selecciona los productos para agregar al carrito</p>
 
         <div className="mb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
             <input
               type="text"
               placeholder="Buscar producto por nombre o código de barras..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary"
             />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-card rounded-xl shadow-lg border border-border p-4">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto">
-            {productosFiltrados.map((producto) => (
-              <button
-                key={producto.id}
-                onClick={() => agregarAlCarrito(producto)}
-                className="p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition-all text-left"
-              >
-                <div className="font-semibold text-sm mb-1">{producto.nombre}</div>
-                <div className="text-xs text-gray-500 mb-2">
-                  Stock: {producto.stock} {producto.unidad_medida}
-                </div>
-                <div className="text-lg font-bold text-primary-600">
-                  ${Number(producto.precio_unitario).toLocaleString()}
-                </div>
-                {producto.precio_mayor !== producto.precio_unitario && (
-                  <div className="text-xs text-gray-500">
-                    Mayor: ${Number(producto.precio_mayor).toLocaleString()}
+            {productosFiltrados.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No se encontraron productos</p>
+              </div>
+            ) : (
+              productosFiltrados.map((producto) => (
+                <button
+                  key={producto.id}
+                  onClick={() => agregarAlCarrito(producto)}
+                  className="p-4 border border-border rounded-lg hover:border-primary hover:shadow-lg transition-all text-left bg-card hover:bg-accent/30"
+                >
+                  <div className="font-semibold text-sm mb-2 text-foreground">{producto.nombre}</div>
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Stock disponible: {producto.stock} {producto.unidad_medida}
                   </div>
-                )}
-              </button>
-            ))}
+                  <div className="text-lg font-bold text-primary mb-1">
+                    {formatearPeso(Number(producto.precio_unitario))}
+                  </div>
+                  {producto.precio_mayor !== producto.precio_unitario && (
+                    <div className="text-xs text-muted-foreground">
+                      Precio mayor: {formatearPeso(Number(producto.precio_mayor))} (mín. {producto.cantidad_minima_mayor})
+                    </div>
+                  )}
+                </button>
+              ))
+            )}
           </div>
         </div>
       </div>
 
       {/* Panel de Carrito */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-lg shadow p-6 sticky top-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-lg border border-border p-6 sticky top-6">
+          <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
             <ShoppingCart className="w-6 h-6" />
-            Carrito
+            Carrito de Compras
           </h2>
 
           {carrito.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">El carrito está vacío</p>
+            <div className="text-center py-12">
+              <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">El carrito está vacío</p>
+              <p className="text-sm text-muted-foreground mt-2">Agrega productos desde el catálogo</p>
+            </div>
           ) : (
             <>
-              <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto">
+              <div className="space-y-3 mb-4 max-h-[350px] overflow-y-auto">
                 {carrito.map((item) => {
                   const precio = item.cantidad >= item.producto.cantidad_minima_mayor
                     ? item.producto.precio_mayor
                     : item.producto.precio_unitario
+                  const subtotalItem = precio * item.cantidad
                   return (
-                    <div key={item.producto.id} className="border-b pb-3">
+                    <div key={item.producto.id} className="border-b border-border pb-3 bg-accent/20 rounded-lg p-3">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
-                          <div className="font-medium text-sm">{item.producto.nombre}</div>
-                          <div className="text-xs text-gray-500">
-                            ${Number(precio).toLocaleString()} c/u
+                          <div className="font-semibold text-sm text-foreground mb-1">{item.producto.nombre}</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            Precio unitario: {formatearPeso(precio)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.producto.unidad_medida} • Stock: {item.producto.stock}
                           </div>
                         </div>
                         <button
                           onClick={() => quitarDelCarrito(item.producto.id)}
-                          className="text-red-600 hover:text-red-800"
+                          className="text-red-400 hover:text-red-300 transition-colors ml-2"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => actualizarCantidad(item.producto.id, item.cantidad - 1)}
-                          className="w-6 h-6 flex items-center justify-center border rounded"
+                          className="w-8 h-8 flex items-center justify-center border border-border rounded-lg hover:bg-accent transition-colors text-foreground"
                         >
                           -
                         </button>
@@ -304,18 +344,18 @@ export default function CajaPage() {
                           onChange={(e) =>
                             actualizarCantidad(item.producto.id, parseInt(e.target.value) || 1)
                           }
-                          className="w-16 text-center border rounded"
+                          className="w-16 text-center bg-input border border-border rounded-lg text-foreground"
                           min="1"
                           max={item.producto.stock}
                         />
                         <button
                           onClick={() => actualizarCantidad(item.producto.id, item.cantidad + 1)}
-                          className="w-6 h-6 flex items-center justify-center border rounded"
+                          className="w-8 h-8 flex items-center justify-center border border-border rounded-lg hover:bg-accent transition-colors text-foreground"
                         >
                           +
                         </button>
-                        <span className="ml-auto font-semibold">
-                          ${(precio * item.cantidad).toLocaleString()}
+                        <span className="ml-auto font-bold text-primary">
+                          {formatearPeso(subtotalItem)}
                         </span>
                       </div>
                     </div>
@@ -323,34 +363,39 @@ export default function CajaPage() {
                 })}
               </div>
 
-              <div className="space-y-3 border-t pt-4">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span className="font-semibold">${calcularSubtotal().toLocaleString()}</span>
+              <div className="space-y-3 border-t border-border pt-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal:</span>
+                  <span className="font-semibold text-foreground">{formatearPeso(calcularSubtotal())}</span>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descuento:
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Descuento (CLP):
                   </label>
                   <input
                     type="number"
                     value={descuento}
                     onChange={(e) => setDescuento(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground"
                     min="0"
-                    step="0.01"
+                    step="1"
                   />
                 </div>
 
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Total:</span>
-                  <span>${calcularTotal().toLocaleString()}</span>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">IVA (19%):</span>
+                  <span className="font-semibold text-foreground">{formatearPeso(calcularIVA())}</span>
+                </div>
+
+                <div className="flex justify-between text-lg font-bold border-t border-border pt-2">
+                  <span className="text-foreground">Total a Pagar:</span>
+                  <span className="text-primary">{formatearPeso(calcularTotal())}</span>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Método de Pago:
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Medio de Pago:
                   </label>
                   <select
                     value={tipoPago}
@@ -358,23 +403,33 @@ export default function CajaPage() {
                       setTipoPago(e.target.value as any)
                       if (e.target.value !== 'factura') setEmpresaId('')
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground"
                   >
                     <option value="efectivo">Efectivo</option>
-                    <option value="tarjeta">Tarjeta</option>
+                    <option value="tarjeta">Tarjeta Débito/Crédito</option>
                     <option value="factura">Factura</option>
                   </select>
                 </div>
 
                 {tipoPago === 'factura' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Empresa:
-                    </label>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-medium text-foreground">
+                        Empresa:
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowEmpresaModal(true)}
+                        className="text-xs text-primary hover:text-primary-400 flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Nueva Empresa
+                      </button>
+                    </div>
                     <select
                       value={empresaId}
                       onChange={(e) => setEmpresaId(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                      className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground"
                       required
                     >
                       <option value="">Seleccionar empresa</option>
@@ -389,8 +444,8 @@ export default function CajaPage() {
 
                 <button
                   onClick={procesarVenta}
-                  disabled={loading}
-                  className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50"
+                  disabled={loading || (tipoPago === 'factura' && !empresaId)}
+                  className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
                 >
                   {loading ? 'Procesando...' : 'Procesar Venta'}
                 </button>
@@ -399,6 +454,16 @@ export default function CajaPage() {
           )}
         </div>
       </div>
+
+      {showEmpresaModal && (
+        <EmpresaModal
+          empresa={null}
+          onClose={() => {
+            setShowEmpresaModal(false)
+            loadEmpresas()
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -43,10 +43,15 @@ export default function FacturasPage() {
     try {
       const { data, error } = await supabase
         .from('ventas')
-        .select('*')
+        .select(`
+          *,
+          empresa:empresas(*),
+          usuario:usuarios(*)
+        `)
         .eq('tipo_pago', 'factura')
         .eq('estado', 'completada')
         .order('created_at', { ascending: false })
+        .limit(200)
 
       if (error) throw error
       setVentasFactura(data || [])
