@@ -63,27 +63,59 @@ Sistema completo de gestión para ferretería desarrollado con Next.js, TypeScri
 
    Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
+## 🌐 Ejecutar en Red Local
+
+Para acceder a la aplicación desde otros dispositivos en tu red local:
+
+1. **Obtener tu IP local:**
+   - Windows: Abre PowerShell y ejecuta `ipconfig`, busca "IPv4 Address"
+   - Mac/Linux: Ejecuta `ifconfig` o `ip addr`, busca tu dirección IP local (generalmente 192.168.x.x)
+
+2. **Ejecutar Next.js en modo red:**
+   ```bash
+   npm run dev -- -H 0.0.0.0
+   ```
+   
+   O modifica el script en `package.json`:
+   ```json
+   "dev": "next dev -H 0.0.0.0"
+   ```
+
+3. **Acceder desde otros dispositivos:**
+   - Desde tu computadora: `http://localhost:3000`
+   - Desde otros dispositivos en la red: `http://TU_IP_LOCAL:3000`
+   - Ejemplo: `http://192.168.1.100:3000`
+
+4. **Nota de seguridad:**
+   - Solo funciona en tu red local (misma WiFi/LAN)
+   - No es accesible desde internet
+   - Asegúrate de que tu firewall permita conexiones en el puerto 3000
+
 ## 🗄️ Configuración de Base de Datos
 
-1. Ejecuta el script SQL en Supabase:
+1. **Ejecutar el schema principal:**
    - Ve a SQL Editor en tu proyecto de Supabase
    - Copia y pega el contenido de `supabase/schema.sql`
    - Ejecuta el script
 
-2. **Crear el primer usuario administrador**:
-   - Ve a Authentication > Users en Supabase
-   - Crea un nuevo usuario manualmente
-   - Luego ejecuta este SQL para asignarle el rol de admin:
-   ```sql
-   INSERT INTO public.usuarios (id, email, nombre, rol, activo)
-   VALUES (
-     'id_del_usuario_creado',
-     'admin@ferreteria.com',
-     'Administrador',
-     'admin',
-     true
-   );
-   ```
+2. **Cargar datos de prueba (opcional pero recomendado):**
+   - Ejecuta `supabase/seed_data_complete.sql` para cargar:
+     - 10 categorías
+     - 8 proveedores
+     - 150 productos
+     - 8 empresas
+   
+3. **Crear usuarios de prueba:**
+   - Consulta el archivo `USUARIOS_PRUEBA.md` para las credenciales
+   - Crea los usuarios en Authentication > Users de Supabase
+   - Ejecuta el script SQL del documento para asignar roles
+
+4. **Cargar transacciones de prueba (opcional):**
+   - Ejecuta `supabase/transacciones_prueba.sql` para crear:
+     - Movimientos de bodega
+     - Ventas de prueba
+     - Pagos de facturas
+   - **Nota:** Ajusta los UUIDs en el script con los IDs reales de tus usuarios
 
 ## 🚀 Deployment en Vercel
 

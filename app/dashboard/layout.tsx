@@ -25,7 +25,6 @@ export default function DashboardLayout({
         return
       }
 
-      // Obtener datos del usuario
       const { data: usuario, error } = await supabase
         .from('usuarios')
         .select('*')
@@ -44,7 +43,6 @@ export default function DashboardLayout({
 
     checkAuth()
 
-    // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
         router.push('/login')
@@ -56,8 +54,8 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     )
   }
@@ -67,7 +65,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar user={user} currentPath={pathname || ''} />
       <main className="flex-1 overflow-y-auto">
         <div className="p-6">

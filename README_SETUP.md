@@ -33,7 +33,7 @@
 ```sql
 INSERT INTO public.usuarios (id, email, nombre, rol, activo)
 VALUES (
-  'PEGA_AQUI_EL_USER_UID',
+  '8bc49b68-a42b-41d7-ad55-53beced2f4de',
   'tu-email@ejemplo.com',
   'Administrador',
   'admin',
