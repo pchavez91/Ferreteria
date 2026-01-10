@@ -33,8 +33,27 @@ export default function LoginPage() {
           .single()
 
         if (usuarioError) {
-          console.error('Error al obtener datos del usuario:', usuarioError)
+          throw new Error('Error al obtener datos del usuario')
         }
+
+        // Verificar si el usuario está activo
+        if (!usuario || !usuario.activo) {
+          // Cerrar sesión si el usuario está inactivo
+          await supabase.auth.signOut()
+          throw new Error('Tu cuenta ha sido desactivada. Ya no perteneces a esta tienda. Por favor, contacta al administrador.')
+        }
+
+        // Actualizar sesión del usuario
+        await supabase
+          .from('sesiones_usuarios')
+          .upsert({
+            usuario_id: usuario.id,
+            ultima_conexion: new Date().toISOString(),
+            esta_activo: true,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'usuario_id'
+          })
 
         router.push('/dashboard')
       }

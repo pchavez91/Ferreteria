@@ -75,11 +75,11 @@ export default function MovimientoModal({ productos, onClose }: MovimientoModalP
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full">
-        <div className="border-b px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900">Nuevo Movimiento</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-card rounded-xl max-w-2xl w-full border border-border shadow-2xl animate-fadeIn">
+        <div className="border-b border-border px-6 py-4 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-foreground">Nuevo Movimiento</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -87,14 +87,14 @@ export default function MovimientoModal({ productos, onClose }: MovimientoModalP
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Producto *
               </label>
               <select
                 required
                 value={formData.producto_id}
                 onChange={(e) => setFormData({ ...formData, producto_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
               >
                 <option value="">Seleccionar producto</option>
                 {productos.map((producto) => (
@@ -106,14 +106,14 @@ export default function MovimientoModal({ productos, onClose }: MovimientoModalP
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Tipo de Movimiento *
               </label>
               <select
                 required
                 value={formData.tipo}
                 onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary"
               >
                 <option value="entrada">Entrada</option>
                 <option value="salida">Salida</option>
@@ -122,7 +122,7 @@ export default function MovimientoModal({ productos, onClose }: MovimientoModalP
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Cantidad *
               </label>
               <input
@@ -131,12 +131,12 @@ export default function MovimientoModal({ productos, onClose }: MovimientoModalP
                 min="1"
                 value={formData.cantidad}
                 onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Motivo *
               </label>
               <textarea
@@ -144,7 +144,7 @@ export default function MovimientoModal({ productos, onClose }: MovimientoModalP
                 value={formData.motivo}
                 onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="Ej: Compra a proveedor, Venta, Ajuste por inventario físico..."
               />
             </div>
@@ -154,14 +154,14 @@ export default function MovimientoModal({ productos, onClose }: MovimientoModalP
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-600 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Guardando...' : 'Guardar'}
             </button>

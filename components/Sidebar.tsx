@@ -54,12 +54,6 @@ export default function Sidebar({ user, currentPath }: SidebarProps) {
       roles: ['admin', 'bodega'],
     },
     {
-      name: 'Caja',
-      href: '/dashboard/caja',
-      icon: ShoppingCart,
-      roles: ['admin', 'caja'],
-    },
-    {
       name: 'Ventas',
       href: '/dashboard/ventas',
       icon: DollarSign,
@@ -133,13 +127,13 @@ export default function Sidebar({ user, currentPath }: SidebarProps) {
                     <Link
                       href={item.href}
                       onClick={() => setIsOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover-lift ${
                         isActive(item.href)
-                          ? 'bg-primary text-primary-foreground shadow-lg'
-                          : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                          ? 'bg-primary text-primary-foreground shadow-lg scale-105'
+                          : 'text-foreground hover:bg-accent hover:text-accent-foreground hover:scale-105'
                       }`}
                     >
-                      <Icon className="w-5 h-5" />
+                      <Icon className="w-5 h-5 transition-transform group-hover:scale-110" />
                       <span className="font-medium">{item.name}</span>
                     </Link>
                   </li>

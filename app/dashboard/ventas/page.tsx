@@ -79,10 +79,10 @@ export default function VentasPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden">
+      <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden hover-glow transition-shadow">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-accent/50">
+            <thead className="bg-accent/50 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Factura
@@ -122,7 +122,7 @@ export default function VentasPage() {
                 </tr>
               ) : (
                 filteredVentas.map((venta) => (
-                  <tr key={venta.id} className="hover:bg-accent/30 transition-colors">
+                  <tr key={venta.id} className="hover:bg-accent/30 transition-all hover:scale-[1.01] cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                       {venta.numero_factura}
                     </td>
@@ -146,13 +146,25 @@ export default function VentasPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                      ${Number(venta.subtotal).toLocaleString()}
+                      {new Intl.NumberFormat('es-CL', {
+                        style: 'currency',
+                        currency: 'CLP',
+                        minimumFractionDigits: 0,
+                      }).format(Number(venta.subtotal))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                      ${Number(venta.descuento).toLocaleString()}
+                      {new Intl.NumberFormat('es-CL', {
+                        style: 'currency',
+                        currency: 'CLP',
+                        minimumFractionDigits: 0,
+                      }).format(Number(venta.descuento))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-primary">
-                      ${Number(venta.total).toLocaleString()}
+                      {new Intl.NumberFormat('es-CL', {
+                        style: 'currency',
+                        currency: 'CLP',
+                        minimumFractionDigits: 0,
+                      }).format(Number(venta.total))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

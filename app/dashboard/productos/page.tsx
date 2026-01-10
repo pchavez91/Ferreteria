@@ -117,10 +117,10 @@ export default function ProductosPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden">
+      <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden hover-glow transition-shadow">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-accent/50">
+            <thead className="bg-accent/50 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Código
@@ -158,7 +158,7 @@ export default function ProductosPage() {
                 </tr>
               ) : (
                 filteredProductos.map((producto) => (
-                  <tr key={producto.id} className="hover:bg-accent/30 transition-colors">
+                  <tr key={producto.id} className="hover:bg-accent/30 transition-all hover:scale-[1.01] cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                       {producto.codigo_barras || '-'}
                     </td>
@@ -169,10 +169,18 @@ export default function ProductosPage() {
                       {(producto.categoria as any)?.nombre || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                      ${Number(producto.precio_unitario).toLocaleString()}
+                      {new Intl.NumberFormat('es-CL', {
+                        style: 'currency',
+                        currency: 'CLP',
+                        minimumFractionDigits: 0,
+                      }).format(Number(producto.precio_unitario))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                      ${Number(producto.precio_mayor).toLocaleString()}
+                      {new Intl.NumberFormat('es-CL', {
+                        style: 'currency',
+                        currency: 'CLP',
+                        minimumFractionDigits: 0,
+                      }).format(Number(producto.precio_mayor))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

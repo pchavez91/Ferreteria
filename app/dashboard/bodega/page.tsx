@@ -101,10 +101,10 @@ export default function BodegaPage() {
         </button>
       </div>
 
-      <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden">
+      <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden hover-glow transition-shadow">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-accent/50">
+            <thead className="bg-accent/50 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Fecha
@@ -135,7 +135,7 @@ export default function BodegaPage() {
                 </tr>
               ) : (
                 movimientos.map((movimiento) => (
-                  <tr key={movimiento.id} className="hover:bg-accent/30 transition-colors">
+                  <tr key={movimiento.id} className="hover:bg-accent/30 transition-all hover:scale-[1.01] cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                       {new Date(movimiento.created_at).toLocaleDateString('es-ES', {
                         year: 'numeric',

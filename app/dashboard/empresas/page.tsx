@@ -71,13 +71,22 @@ export default function EmpresasPage() {
     return <div className="text-center py-12">Cargando empresas...</div>
   }
 
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+        <p className="text-muted-foreground mt-4">Cargando empresas...</p>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Empresas</h1>
+        <h1 className="text-3xl font-bold text-foreground">Empresas</h1>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors shadow-lg hover-lift"
         >
           <Plus className="w-5 h-5" />
           Nueva Empresa
@@ -86,77 +95,77 @@ export default function EmpresasPage() {
 
       <div className="mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
           <input
             type="text"
             placeholder="Buscar por nombre o NIT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden hover-glow transition-shadow">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-accent/50 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Nombre
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   NIT
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Contacto
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Teléfono
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Estado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {filteredEmpresas.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    <Building2 className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                  <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                    <Building2 className="w-12 h-12 mx-auto mb-2 text-muted-foreground opacity-50" />
                     <p>No se encontraron empresas</p>
                   </td>
                 </tr>
               ) : (
                 filteredEmpresas.map((empresa) => (
-                  <tr key={empresa.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  <tr key={empresa.id} className="hover:bg-accent/30 transition-all hover:scale-[1.01] cursor-pointer">
+                    <td className="px-6 py-4 text-sm font-medium text-foreground">
                       {empresa.nombre}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                       {empresa.nit}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
                       {empresa.contacto || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {empresa.telefono || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {empresa.email || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 text-xs font-semibold rounded ${
+                        className={`px-2 py-1 text-xs font-semibold rounded border ${
                           empresa.activa
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                            : 'bg-red-500/20 text-red-400 border-red-500/30'
                         }`}
                       >
                         {empresa.activa ? 'Activa' : 'Inactiva'}
@@ -166,13 +175,13 @@ export default function EmpresasPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEdit(empresa)}
-                          className="text-primary-600 hover:text-primary-900"
+                          className="text-primary hover:text-primary-400 transition-colors hover:scale-110"
                         >
                           <Edit className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(empresa.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-400 hover:text-red-300 transition-colors hover:scale-110"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
