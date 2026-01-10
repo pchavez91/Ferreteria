@@ -45,14 +45,27 @@ export default function DashboardLayout({
         return
       }
 
+      // Verificar si ya existe una sesión activa, si no, establecer hora_conexion
+      const { data: sesionExistente } = await supabase
+        .from('sesiones_usuarios')
+        .select('hora_conexion, esta_activo')
+        .eq('usuario_id', usuario.id)
+        .single()
+
+      const ahora = new Date().toISOString()
+      const horaInicioSesion = sesionExistente?.esta_activo && sesionExistente?.hora_conexion 
+        ? sesionExistente.hora_conexion 
+        : ahora
+
       // Actualizar sesión del usuario como activo
       await supabase
         .from('sesiones_usuarios')
         .upsert({
           usuario_id: usuario.id,
-          ultima_conexion: new Date().toISOString(),
+          ultima_conexion: ahora,
+          hora_conexion: horaInicioSesion,
           esta_activo: true,
-          updated_at: new Date().toISOString(),
+          updated_at: ahora,
         }, {
           onConflict: 'usuario_id'
         })
@@ -96,14 +109,27 @@ export default function DashboardLayout({
           await supabase.auth.signOut()
           router.push('/login')
         } else {
+          // Verificar si ya existe una sesión activa
+          const { data: sesionExistente } = await supabase
+            .from('sesiones_usuarios')
+            .select('hora_conexion, esta_activo')
+            .eq('usuario_id', session.user.id)
+            .single()
+
+          const ahora = new Date().toISOString()
+          const horaInicioSesion = sesionExistente?.esta_activo && sesionExistente?.hora_conexion 
+            ? sesionExistente.hora_conexion 
+            : ahora
+
           // Actualizar sesión como activa
           await supabase
             .from('sesiones_usuarios')
             .upsert({
               usuario_id: session.user.id,
-              ultima_conexion: new Date().toISOString(),
+              ultima_conexion: ahora,
+              hora_conexion: horaInicioSesion,
               esta_activo: true,
-              updated_at: new Date().toISOString(),
+              updated_at: ahora,
             }, {
               onConflict: 'usuario_id'
             })

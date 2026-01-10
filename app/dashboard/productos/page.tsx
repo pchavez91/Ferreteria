@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Producto, Categoria } from '@/lib/types'
-import { Plus, Search, Edit, Trash2, Package } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Package, ChevronUp, ChevronDown } from 'lucide-react'
 import ProductoModal from '@/components/ProductoModal'
 
 export default function ProductosPage() {
@@ -13,6 +13,10 @@ export default function ProductosPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null)
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({
+    key: 'nombre',
+    direction: 'asc',
+  })
 
   useEffect(() => {
     loadProductos()
@@ -82,10 +86,50 @@ export default function ProductosPage() {
     loadProductos()
   }
 
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' }
+        if (prev.direction === 'desc') return { key, direction: null }
+        return { key, direction: 'asc' }
+      }
+      return { key, direction: 'asc' }
+    })
+  }
+
   const filteredProductos = productos.filter((p) =>
     p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const sortedProductos = [...filteredProductos].sort((a, b) => {
+    if (!sortConfig.direction) return 0
+
+    let aValue: any
+    let bValue: any
+
+    if (sortConfig.key === 'categoria') {
+      aValue = (a.categoria as any)?.nombre || ''
+      bValue = (b.categoria as any)?.nombre || ''
+    } else {
+      aValue = a[sortConfig.key as keyof Producto]
+      bValue = b[sortConfig.key as keyof Producto]
+    }
+
+    if (aValue === null || aValue === undefined) return 1
+    if (bValue === null || bValue === undefined) return -1
+
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      const comparison = aValue.localeCompare(bValue, 'es', { numeric: true })
+      return sortConfig.direction === 'asc' ? comparison : -comparison
+    }
+
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+    }
+
+    return 0
+  })
 
   if (loading) {
     return <div className="text-center py-12">Cargando productos...</div>
@@ -122,26 +166,89 @@ export default function ProductosPage() {
           <table className="w-full">
             <thead className="bg-accent/50 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Código
+                <th
+                  onClick={() => handleSort('codigo_barras')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Código
+                    {sortConfig.key === 'codigo_barras' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Nombre
+                <th
+                  onClick={() => handleSort('nombre')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Nombre
+                    {sortConfig.key === 'nombre' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Categoría
+                <th
+                  onClick={() => handleSort('categoria')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Categoría
+                    {sortConfig.key === 'categoria' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Precio Unitario
+                <th
+                  onClick={() => handleSort('precio_unitario')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Precio Unitario
+                    {sortConfig.key === 'precio_unitario' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Precio Mayor
+                <th
+                  onClick={() => handleSort('precio_mayor')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Precio Mayor
+                    {sortConfig.key === 'precio_mayor' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Stock
+                <th
+                  onClick={() => handleSort('stock')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Stock
+                    {sortConfig.key === 'stock' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Unidad
+                <th
+                  onClick={() => handleSort('unidad_medida')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Unidad
+                    {sortConfig.key === 'unidad_medida' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
                   Acciones
@@ -149,15 +256,15 @@ export default function ProductosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredProductos.length === 0 ? (
+              {sortedProductos.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">
                     <Package className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
-                    <p>No se encontraron productos</p>
+                    <p>{productos.length === 0 ? 'No hay productos registrados' : 'No se encontraron productos con ese criterio'}</p>
                   </td>
                 </tr>
               ) : (
-                filteredProductos.map((producto) => (
+                sortedProductos.map((producto) => (
                   <tr key={producto.id} className="hover:bg-accent/30 transition-all hover:scale-[1.01] cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                       {producto.codigo_barras || '-'}

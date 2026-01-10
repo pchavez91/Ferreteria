@@ -31,6 +31,8 @@ export default function POSPage() {
   const [cvv, setCvv] = useState('')
   const [cuotas, setCuotas] = useState('1')
   const [tipoTarjeta, setTipoTarjeta] = useState<'debito' | 'credito'>('debito')
+  const [showBoletaModal, setShowBoletaModal] = useState(false)
+  const [ventaCompletada, setVentaCompletada] = useState<any>(null)
   const carritoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -208,7 +210,14 @@ export default function POSPage() {
       const iva = calcularIVA()
       const total = calcularTotal()
 
-      // Crear venta
+      // Obtener datos del usuario vendedor
+      const { data: usuarioVendedor } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      // Crear venta - todos los pagos dan boleta, solo factura tiene empresa_id
       const { data: venta, error: ventaError } = await supabase
         .from('ventas')
         .insert([
@@ -216,25 +225,39 @@ export default function POSPage() {
             numero_factura: generarNumeroFactura(),
             empresa_id: tipoPago === 'factura' ? empresaId : null,
             usuario_id: user.id,
-            tipo_pago: tipoPago === 'tarjeta' ? 'tarjeta' : tipoPago,
+            vendedor_id: user.id,
+            tipo_pago: tipoPago || 'efectivo', // efectivo, tarjeta, o factura
             subtotal: subtotalConDescuento,
             descuento: desc,
             impuesto: iva,
             total,
             estado: 'completada',
             notas: tipoPago === 'efectivo' 
-              ? `Efectivo recibido: ${formatearPeso(parseFloat(montoEfectivo) || total)}`
+              ? `Efectivo recibido: ${formatearPeso(parseFloat(montoEfectivo) || total)}. Vuelto: ${formatearPeso(Math.max(0, parseFloat(montoEfectivo || '0') - total))}`
               : tipoPago === 'tarjeta'
-              ? `Tarjeta ${tipoTarjeta} - Cuotas: ${cuotas}`
+              ? `Tarjeta ${tipoTarjeta} - Cuotas: ${cuotas} - N°: ${numeroTarjeta.slice(-4)}`
+              : tipoPago === 'factura'
+              ? `Factura a empresa`
               : null,
           },
         ])
-        .select()
+        .select('*')
         .single()
 
       if (ventaError) {
         console.error('Error al crear venta:', ventaError)
         throw ventaError
+      }
+
+      // Obtener empresa si existe (para la boleta)
+      let empresa = null
+      if (venta.empresa_id) {
+        const { data: empresaData } = await supabase
+          .from('empresas')
+          .select('*')
+          .eq('id', venta.empresa_id)
+          .single()
+        empresa = empresaData
       }
 
       // Crear detalles de venta
@@ -281,7 +304,19 @@ export default function POSPage() {
         ])
       }
 
-      alert(`✓ Venta procesada exitosamente\nFactura: ${venta.numero_factura}\nTotal: ${formatearPeso(total)}`)
+      // Mostrar boleta - agregar empresa a la venta para mostrar en la boleta
+      setVentaCompletada({
+        venta: {
+          ...venta,
+          empresa: empresa
+        },
+        carrito: carrito,
+        usuarioVendedor: usuarioVendedor,
+        tipoPago: tipoPago || 'efectivo',
+        montoEfectivo: tipoPago === 'efectivo' ? montoEfectivo : null,
+        vuelto: tipoPago === 'efectivo' ? Math.max(0, parseFloat(montoEfectivo || '0') - total) : 0,
+      })
+      setShowBoletaModal(true)
       
       // Limpiar
       setCarrito([])
@@ -328,20 +363,24 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - 3 Columnas */}
       <div className="flex-1 grid grid-cols-12 gap-4 p-4 overflow-hidden">
-        {/* Panel de Productos - Lado Izquierdo */}
-        <div className="col-span-12 lg:col-span-7 flex flex-col bg-card rounded-xl border border-border shadow-xl overflow-hidden">
+        {/* Columna 1: Buscar y Agregar Productos */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col bg-card rounded-xl border border-border shadow-xl overflow-hidden">
           {/* Buscador */}
-          <div className="p-4 border-b border-border">
+          <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-primary/5">
+            <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+              <Search className="w-5 h-5" />
+              Buscar Productos
+            </h2>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <input
                 type="text"
-                placeholder="Buscar producto por nombre o código de barras..."
+                placeholder="Nombre o código de barras..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary text-lg"
+                className="w-full pl-10 pr-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary"
                 autoFocus
               />
             </div>
@@ -351,254 +390,254 @@ export default function POSPage() {
           <div className="flex-1 overflow-y-auto p-4">
             {productosFiltrados.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <Package className="w-20 h-20 mb-4 opacity-50" />
-                <p className="text-lg">No se encontraron productos</p>
+                <Package className="w-16 h-16 mb-4 opacity-50" />
+                <p>No se encontraron productos</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 {productosFiltrados.map((producto) => (
                   <button
                     key={producto.id}
                     onClick={() => agregarAlCarrito(producto)}
-                    className="card-interactive p-4 bg-accent/30 border border-border rounded-xl text-left hover:bg-accent/50 group"
+                    className="p-3 bg-accent/30 border border-border rounded-lg text-left hover:bg-accent/50 hover-lift transition-all group"
                   >
-                    <div className="font-semibold text-sm mb-2 text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                    <div className="font-medium text-xs mb-1 text-foreground line-clamp-2 group-hover:text-primary transition-colors">
                       {producto.nombre}
                     </div>
-                    <div className="text-xs text-muted-foreground mb-2">
-                      Stock: {producto.stock} {producto.unidad_medida}
+                    <div className="text-xs text-muted-foreground mb-1">
+                      Stock: {producto.stock}
                     </div>
-                    <div className="text-lg font-bold text-primary mb-1">
+                    <div className="text-sm font-bold text-primary">
                       {formatearPeso(Number(producto.precio_unitario))}
                     </div>
-                    {producto.precio_mayor !== producto.precio_unitario && (
-                      <div className="text-xs text-muted-foreground">
-                        Mayor: {formatearPeso(Number(producto.precio_mayor))}
-                      </div>
-                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
-        </div>
-
-        {/* Panel de Carrito y Pago - Lado Derecho */}
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-4">
-          {/* Carrito */}
-          <div className="flex-1 bg-card rounded-xl border border-border shadow-xl overflow-hidden flex flex-col">
-            <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-primary/5">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                <ShoppingCart className="w-6 h-6" />
-                Carrito de Compras
-                {carrito.length > 0 && (
-                  <span className="ml-auto px-3 py-1 bg-primary text-primary-foreground rounded-full text-sm font-semibold">
-                    {carrito.length}
-                  </span>
-                )}
-              </h2>
-            </div>
-
-            <div ref={carritoRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-              {carrito.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <ShoppingCart className="w-24 h-24 mb-4 opacity-30" />
-                  <p className="text-lg font-medium">Carrito vacío</p>
-                  <p className="text-sm mt-2">Agrega productos desde el catálogo</p>
-                </div>
-              ) : (
-                carrito.map((item) => {
-                  const precio = item.cantidad >= item.producto.cantidad_minima_mayor
-                    ? item.producto.precio_mayor
-                    : item.producto.precio_unitario
-                  const subtotalItem = precio * item.cantidad
-                  return (
-                    <div
-                      key={item.producto.id}
-                      className="bg-accent/30 border border-border rounded-xl p-4 animate-fadeIn hover:bg-accent/50 transition-all hover-lift"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-foreground mb-1 truncate">
-                            {item.producto.nombre}
-                          </div>
-                          <div className="text-xs text-muted-foreground mb-1">
-                            Precio: {formatearPeso(precio)} c/u
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {item.producto.unidad_medida} • Stock: {item.producto.stock}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => quitarDelCarrito(item.producto.id)}
-                          className="ml-3 p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => actualizarCantidad(item.producto.id, item.cantidad - 1)}
-                          className="w-8 h-8 flex items-center justify-center border border-border rounded-lg hover:bg-accent transition-colors text-foreground"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <input
-                          type="number"
-                          value={item.cantidad}
-                          onChange={(e) =>
-                            actualizarCantidad(item.producto.id, parseInt(e.target.value) || 1)
-                          }
-                          className="w-16 text-center bg-input border border-border rounded-lg text-foreground font-semibold"
-                          min="1"
-                          max={item.producto.stock}
-                        />
-                        <button
-                          onClick={() => actualizarCantidad(item.producto.id, item.cantidad + 1)}
-                          className="w-8 h-8 flex items-center justify-center border border-border rounded-lg hover:bg-accent transition-colors text-foreground"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                        <span className="ml-auto font-bold text-lg text-primary">
-                          {formatearPeso(subtotalItem)}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-
-            {/* Totales */}
-            {carrito.length > 0 && (
-              <div className="border-t border-border p-4 bg-accent/20 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal:</span>
-                  <span className="font-semibold text-foreground">{formatearPeso(calcularSubtotal())}</span>
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Descuento (CLP):
-                  </label>
-                  <input
-                    type="number"
-                    value={descuento}
-                    onChange={(e) => setDescuento(e.target.value)}
-                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground text-sm"
-                    min="0"
-                    step="1"
-                    placeholder="0"
-                  />
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">IVA (19%):</span>
-                  <span className="font-semibold text-foreground">{formatearPeso(calcularIVA())}</span>
-                </div>
-
-                <div className="flex justify-between text-xl font-bold border-t border-border pt-2 mt-2">
-                  <span className="text-foreground">Total a Pagar:</span>
-                  <span className="text-primary">{formatearPeso(calcularTotal())}</span>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Métodos de Pago */}
-          {carrito.length > 0 && (
-            <div className="bg-card rounded-xl border border-border shadow-xl p-4">
-              <h3 className="text-lg font-bold text-foreground mb-4">Método de Pago</h3>
-              
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <button
-                  onClick={() => handleSeleccionarPago('efectivo')}
-                  className={`p-4 rounded-xl border-2 transition-all hover-lift ${
-                    tipoPago === 'efectivo'
-                      ? 'border-primary bg-primary/20 shadow-lg scale-105'
-                      : 'border-border bg-accent/30 hover:border-primary/50'
-                  }`}
-                >
-                  <Banknote className="w-8 h-8 mx-auto mb-2 text-primary" />
-                  <div className="text-sm font-medium text-foreground">Efectivo</div>
-                </button>
+        {/* Columna 2: Carrito de Compras */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col bg-card rounded-xl border border-border shadow-xl overflow-hidden">
+          <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-primary/5">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              Carrito de Compras
+              {carrito.length > 0 && (
+                <span className="ml-auto px-3 py-1 bg-primary text-primary-foreground rounded-full text-xs font-semibold">
+                  {carrito.length}
+                </span>
+              )}
+            </h2>
+          </div>
 
-                <button
-                  onClick={() => handleSeleccionarPago('tarjeta')}
-                  className={`p-4 rounded-xl border-2 transition-all hover-lift ${
-                    tipoPago === 'tarjeta'
-                      ? 'border-primary bg-primary/20 shadow-lg scale-105'
-                      : 'border-border bg-accent/30 hover:border-primary/50'
-                  }`}
-                >
-                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-primary" />
-                  <div className="text-sm font-medium text-foreground">Tarjeta</div>
-                </button>
-
-                <button
-                  onClick={() => handleSeleccionarPago('factura')}
-                  className={`p-4 rounded-xl border-2 transition-all hover-lift ${
-                    tipoPago === 'factura'
-                      ? 'border-primary bg-primary/20 shadow-lg scale-105'
-                      : 'border-border bg-accent/30 hover:border-primary/50'
-                  }`}
-                >
-                  <Receipt className="w-8 h-8 mx-auto mb-2 text-primary" />
-                  <div className="text-sm font-medium text-foreground">Factura</div>
-                </button>
+          <div ref={carritoRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+            {carrito.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <ShoppingCart className="w-16 h-16 mb-3 opacity-30" />
+                <p className="text-sm">Carrito vacío</p>
               </div>
+            ) : (
+              carrito.map((item) => {
+                const precio = item.cantidad >= item.producto.cantidad_minima_mayor
+                  ? item.producto.precio_mayor
+                  : item.producto.precio_unitario
+                const subtotalItem = precio * item.cantidad
+                return (
+                  <div
+                    key={item.producto.id}
+                    className="bg-accent/30 border border-border rounded-lg p-3 hover:bg-accent/50 transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-xs text-foreground mb-1 line-clamp-2">
+                          {item.producto.nombre}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatearPeso(precio)} c/u
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => quitarDelCarrito(item.producto.id)}
+                        className="ml-2 p-1 text-red-400 hover:text-red-300 rounded transition-all"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => actualizarCantidad(item.producto.id, item.cantidad - 1)}
+                        className="w-7 h-7 flex items-center justify-center border border-border rounded hover:bg-accent transition-colors"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="number"
+                        value={item.cantidad}
+                        onChange={(e) =>
+                          actualizarCantidad(item.producto.id, parseInt(e.target.value) || 1)
+                        }
+                        className="w-12 text-center bg-input border border-border rounded text-foreground text-xs font-semibold"
+                        min="1"
+                        max={item.producto.stock}
+                      />
+                      <button
+                        onClick={() => actualizarCantidad(item.producto.id, item.cantidad + 1)}
+                        className="w-7 h-7 flex items-center justify-center border border-border rounded hover:bg-accent transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                      <span className="ml-auto font-bold text-sm text-primary">
+                        {formatearPeso(subtotalItem)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
 
-              {tipoPago === 'factura' && (
-                <div className="mt-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-foreground">Empresa:</label>
+        {/* Columna 3: Totales y Métodos de Pago */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col bg-card rounded-xl border border-border shadow-xl overflow-hidden p-4">
+            {carrito.length > 0 ? (
+              <>
+                {/* Totales */}
+                <div className="space-y-3 border-b border-border pb-4">
+                  <h2 className="text-lg font-bold text-foreground">Resumen de Venta</h2>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span className="font-semibold text-foreground">{formatearPeso(calcularSubtotal())}</span>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Descuento (CLP):
+                      </label>
+                      <input
+                        type="number"
+                        value={descuento}
+                        onChange={(e) => setDescuento(e.target.value)}
+                        className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground text-sm"
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">IVA (19%):</span>
+                      <span className="font-semibold text-foreground">{formatearPeso(calcularIVA())}</span>
+                    </div>
+
+                    <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
+                      <span className="text-foreground">Total:</span>
+                      <span className="text-primary">{formatearPeso(calcularTotal())}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Métodos de Pago */}
+                <div className="flex-1 flex flex-col">
+                  <h3 className="text-lg font-bold text-foreground mb-3">Método de Pago</h3>
+                  
+                  <div className="grid grid-cols-3 gap-2 mb-4">
                     <button
-                      type="button"
-                      onClick={() => setShowEmpresaModal(true)}
-                      className="text-xs text-primary hover:text-primary-400 flex items-center gap-1"
+                      onClick={() => handleSeleccionarPago('efectivo')}
+                      className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
+                        tipoPago === 'efectivo'
+                          ? 'border-primary bg-primary/20 shadow-lg'
+                          : 'border-border bg-accent/30 hover:border-primary/50'
+                      }`}
                     >
-                      <Plus className="w-3 h-3" />
-                      Nueva
+                      <Banknote className="w-6 h-6 mb-1 text-primary" />
+                      <div className="text-xs font-medium text-foreground">Efectivo</div>
+                    </button>
+
+                    <button
+                      onClick={() => handleSeleccionarPago('tarjeta')}
+                      className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
+                        tipoPago === 'tarjeta'
+                          ? 'border-primary bg-primary/20 shadow-lg'
+                          : 'border-border bg-accent/30 hover:border-primary/50'
+                      }`}
+                    >
+                      <CreditCard className="w-6 h-6 mb-1 text-primary" />
+                      <div className="text-xs font-medium text-foreground">Tarjeta</div>
+                    </button>
+
+                    <button
+                      onClick={() => handleSeleccionarPago('factura')}
+                      className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
+                        tipoPago === 'factura'
+                          ? 'border-primary bg-primary/20 shadow-lg'
+                          : 'border-border bg-accent/30 hover:border-primary/50'
+                      }`}
+                    >
+                      <Receipt className="w-6 h-6 mb-1 text-primary" />
+                      <div className="text-xs font-medium text-foreground">Factura</div>
                     </button>
                   </div>
-                  <select
-                    value={empresaId}
-                    onChange={(e) => setEmpresaId(e.target.value)}
-                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground"
-                  >
-                    <option value="">Seleccionar empresa</option>
-                    {empresas.map((empresa) => (
-                      <option key={empresa.id} value={empresa.id}>
-                        {empresa.nombre} - {empresa.nit}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
-              <button
-                onClick={() => {
-                  if (tipoPago === null) {
-                    alert('Seleccione un método de pago')
-                    return
-                  }
-                  if (tipoPago === 'factura' && !empresaId) {
-                    alert('Seleccione una empresa')
-                    return
-                  }
-                  if (tipoPago === 'efectivo' || tipoPago === 'tarjeta') {
-                    setShowPagoModal(true)
-                  } else {
-                    procesarVenta()
-                  }
-                }}
-                disabled={loading || tipoPago === null || (tipoPago === 'factura' && !empresaId)}
-                className="w-full mt-4 bg-gradient-to-r from-primary to-primary-600 text-primary-foreground py-4 rounded-xl font-bold text-lg hover-glow hover-lift disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-              >
-                {loading ? 'Procesando...' : 'Finalizar Venta'}
-              </button>
-            </div>
-          )}
+                  {tipoPago === 'factura' && (
+                    <div className="mb-4 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-sm font-medium text-foreground">Empresa:</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowEmpresaModal(true)}
+                          className="text-xs text-primary hover:text-primary-400 flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Nueva
+                        </button>
+                      </div>
+                      <select
+                        value={empresaId}
+                        onChange={(e) => setEmpresaId(e.target.value)}
+                        className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground text-sm"
+                      >
+                        <option value="">Seleccionar empresa</option>
+                        {empresas.map((empresa) => (
+                          <option key={empresa.id} value={empresa.id}>
+                            {empresa.nombre} - {empresa.nit}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (tipoPago === null) {
+                        alert('Seleccione un método de pago')
+                        return
+                      }
+                      if (tipoPago === 'factura' && !empresaId) {
+                        alert('Seleccione una empresa')
+                        return
+                      }
+                      if (tipoPago === 'efectivo' || tipoPago === 'tarjeta') {
+                        setShowPagoModal(true)
+                      } else {
+                        procesarVenta()
+                      }
+                    }}
+                    disabled={loading || tipoPago === null || (tipoPago === 'factura' && !empresaId)}
+                    className="w-full mt-auto bg-gradient-to-r from-primary to-primary-600 text-primary-foreground py-3 rounded-lg font-bold hover-glow hover-lift disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+                  >
+                    {loading ? 'Procesando...' : 'Finalizar Venta'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <Receipt className="w-16 h-16 mb-3 opacity-30" />
+                <p className="text-sm">Agrega productos para ver el resumen</p>
+              </div>
+            )}
         </div>
       </div>
 
@@ -637,6 +676,208 @@ export default function POSPage() {
           }}
         />
       )}
+
+      {showBoletaModal && ventaCompletada && (
+        <BoletaModal
+          venta={ventaCompletada.venta}
+          carrito={ventaCompletada.carrito}
+          usuarioVendedor={ventaCompletada.usuarioVendedor}
+          tipoPago={ventaCompletada.tipoPago}
+          montoEfectivo={ventaCompletada.montoEfectivo}
+          vuelto={ventaCompletada.vuelto}
+          onClose={() => {
+            setShowBoletaModal(false)
+            setVentaCompletada(null)
+          }}
+          formatearPeso={formatearPeso}
+        />
+      )}
+    </div>
+  )
+}
+
+// Componente Modal de Boleta
+function BoletaModal({
+  venta,
+  carrito,
+  usuarioVendedor,
+  tipoPago,
+  montoEfectivo,
+  vuelto,
+  onClose,
+  formatearPeso,
+}: any) {
+  const handleImprimir = () => {
+    window.print()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-card rounded-xl max-w-2xl w-full max-h-[90vh] border border-border shadow-2xl animate-fadeIn flex flex-col">
+        <div className="p-6 border-b border-border flex justify-between items-center flex-shrink-0 no-print">
+          <h2 className="text-2xl font-bold text-foreground">Boleta de Venta</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={handleImprimir}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-600 transition-colors font-medium"
+            >
+              Imprimir
+            </button>
+            <button
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto flex-1 print:p-0">
+          <div className="bg-white text-black p-6 rounded-lg print:shadow-none" id="boleta-print">
+            {/* Encabezado */}
+            <div className="text-center border-b border-gray-300 pb-4 mb-4">
+              <h1 className="text-2xl font-bold mb-2">FERRETERÍA EL MAESTRO</h1>
+              <p className="text-sm text-gray-600">RUT: 77.777.777-7</p>
+              <p className="text-sm text-gray-600">Av. Principal 123, Santiago, Chile</p>
+              <p className="text-sm text-gray-600">Tel: +56 2 2345 6789</p>
+            </div>
+
+            {/* Información de la venta */}
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-semibold">Boleta N°:</span>
+                <span>{venta.numero_factura}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-semibold">Fecha:</span>
+                <span>{new Date(venta.created_at).toLocaleString('es-CL', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric', 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-semibold">Atendido por:</span>
+                <span>{usuarioVendedor?.nombre || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-semibold">Medio de Pago:</span>
+                <span className="uppercase">
+                  {tipoPago === 'efectivo' ? 'Efectivo' : tipoPago === 'tarjeta' ? 'Tarjeta' : 'Factura'}
+                </span>
+              </div>
+              {venta.empresa && (
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-semibold">Empresa:</span>
+                  <span>{(venta.empresa as any).nombre}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Detalles de productos */}
+            <div className="border-t border-gray-300 pt-4 mb-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-300">
+                    <th className="text-left py-2 font-semibold">Cantidad</th>
+                    <th className="text-left py-2 font-semibold">Descripción</th>
+                    <th className="text-right py-2 font-semibold">Precio Unit.</th>
+                    <th className="text-right py-2 font-semibold">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {carrito.map((item: any, index: number) => {
+                    const precio = item.cantidad >= item.producto.cantidad_minima_mayor
+                      ? item.producto.precio_mayor
+                      : item.producto.precio_unitario
+                    const subtotalItem = precio * item.cantidad
+                    return (
+                      <tr key={index} className="border-b border-gray-200">
+                        <td className="py-2">{item.cantidad}</td>
+                        <td className="py-2">{item.producto.nombre}</td>
+                        <td className="text-right py-2">{formatearPeso(precio)}</td>
+                        <td className="text-right py-2 font-semibold">{formatearPeso(subtotalItem)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totales */}
+            <div className="border-t border-gray-300 pt-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal:</span>
+                <span>{formatearPeso(venta.subtotal)}</span>
+              </div>
+              {venta.descuento > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Descuento:</span>
+                  <span>-{formatearPeso(venta.descuento)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span>IVA (19%):</span>
+                <span>{formatearPeso(venta.impuesto)}</span>
+              </div>
+              <div className="flex justify-between text-lg font-bold border-t border-gray-300 pt-2 mt-2">
+                <span>TOTAL:</span>
+                <span>{formatearPeso(venta.total)}</span>
+              </div>
+              {tipoPago === 'efectivo' && montoEfectivo && (
+                <>
+                  <div className="flex justify-between text-sm pt-2 border-t border-gray-300">
+                    <span>Recibido:</span>
+                    <span>{formatearPeso(parseFloat(montoEfectivo))}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span>Vuelto:</span>
+                    <span>{formatearPeso(vuelto || 0)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Pie de página */}
+            <div className="text-center text-xs text-gray-600 mt-6 pt-4 border-t border-gray-300">
+              <p>¡Gracias por su compra!</p>
+              <p>Valor de compra no incluye instalación ni transporte</p>
+              <p>Boleta exenta de IVA según Art. 12 letra A de la Ley de IVA</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-border flex justify-end flex-shrink-0 bg-card no-print">
+          <button
+            onClick={onClose}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary-600 transition-colors font-semibold"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #boleta-print, #boleta-print * {
+            visibility: visible;
+          }
+          #boleta-print {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
@@ -668,8 +909,8 @@ function PagoModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-xl max-w-md w-full border border-border shadow-2xl animate-fadeIn">
-        <div className="p-6 border-b border-border flex justify-between items-center">
+      <div className="bg-card rounded-xl max-w-md w-full max-h-[90vh] border border-border shadow-2xl animate-fadeIn flex flex-col">
+        <div className="p-6 border-b border-border flex justify-between items-center flex-shrink-0">
           <h2 className="text-2xl font-bold text-foreground">
             {tipo === 'efectivo' ? 'Pago en Efectivo' : 'Pago con Tarjeta'}
           </h2>
@@ -681,7 +922,7 @@ function PagoModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="bg-primary/10 rounded-lg p-4 border border-primary/30">
             <div className="text-sm text-muted-foreground mb-1">Total a Pagar</div>
             <div className="text-2xl font-bold text-primary">{formatearPeso(total)}</div>
@@ -829,26 +1070,26 @@ function PagoModal({
               )}
             </>
           )}
+        </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-3 border border-border rounded-lg text-foreground hover:bg-accent transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={
-                loading ||
-                (tipo === 'efectivo' && (!montoEfectivo || parseFloat(montoEfectivo) < total)) ||
-                (tipo === 'tarjeta' && (!numeroTarjeta || !nombreTarjeta || !fechaVencimiento || !cvv))
-              }
-              className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary-600 disabled:opacity-50 transition-colors font-semibold"
-            >
-              {loading ? 'Procesando...' : 'Confirmar Pago'}
-            </button>
-          </div>
+        <div className="p-6 border-t border-border flex gap-3 flex-shrink-0 bg-card">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 border border-border rounded-lg text-foreground hover:bg-accent transition-colors font-medium"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={
+              loading ||
+              (tipo === 'efectivo' && (!montoEfectivo || parseFloat(montoEfectivo) < total)) ||
+              (tipo === 'tarjeta' && (!numeroTarjeta || !nombreTarjeta || !fechaVencimiento || !cvv))
+            }
+            className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary-600 disabled:opacity-50 transition-colors font-semibold"
+          >
+            {loading ? 'Procesando...' : 'Confirmar Pago'}
+          </button>
         </div>
       </div>
     </div>

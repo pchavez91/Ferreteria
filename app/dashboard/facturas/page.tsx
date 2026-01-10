@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PagoFactura, Venta } from '@/lib/types'
-import { Plus, Search, DollarSign, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Search, DollarSign, CheckCircle, XCircle, ChevronUp, ChevronDown } from 'lucide-react'
 import PagoFacturaModal from '@/components/PagoFacturaModal'
 
 export default function FacturasPage() {
@@ -13,6 +13,10 @@ export default function FacturasPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [filtroPendientes, setFiltroPendientes] = useState<boolean | null>(null)
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({
+    key: 'created_at',
+    direction: 'desc',
+  })
 
   useEffect(() => {
     loadPagos()
@@ -42,23 +46,55 @@ export default function FacturasPage() {
 
   const loadVentasFactura = async () => {
     try {
-      const { data, error } = await supabase
+      // Obtener ventas sin relaciones para evitar error de relaciones múltiples
+      const { data: ventasData, error: ventasError } = await supabase
         .from('ventas')
-        .select(`
-          *,
-          empresa:empresas(*),
-          usuario:usuarios(*)
-        `)
+        .select('*')
         .eq('tipo_pago', 'factura')
         .eq('estado', 'completada')
         .order('created_at', { ascending: false })
         .limit(200)
 
-      if (error) throw error
-      setVentasFactura(data || [])
+      if (ventasError) throw ventasError
+
+      // Obtener empresas y usuarios por separado
+      const empresaIds = [...new Set((ventasData || []).map(v => v.empresa_id).filter(Boolean))]
+      const { data: empresasData } = await supabase
+        .from('empresas')
+        .select('*')
+        .in('id', empresaIds)
+
+      const usuarioIds = [...new Set([
+        ...(ventasData || []).map(v => v.usuario_id).filter(Boolean),
+        ...(ventasData || []).map(v => v.vendedor_id).filter(Boolean)
+      ])]
+      const { data: usuariosData } = await supabase
+        .from('usuarios')
+        .select('*')
+        .in('id', usuarioIds)
+
+      // Combinar datos
+      const ventasConDatos = (ventasData || []).map(venta => ({
+        ...venta,
+        empresa: empresasData?.find(e => e.id === venta.empresa_id) || null,
+        usuario: usuariosData?.find(u => u.id === venta.vendedor_id || u.id === venta.usuario_id) || null,
+      }))
+
+      setVentasFactura(ventasConDatos as any)
     } catch (error) {
       console.error('Error al cargar ventas a factura:', error)
     }
+  }
+
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' }
+        if (prev.direction === 'desc') return { key, direction: null }
+        return { key, direction: 'asc' }
+      }
+      return { key, direction: 'asc' }
+    })
   }
 
   const filteredPagos = pagos.filter((p) => {
@@ -85,6 +121,48 @@ export default function FacturasPage() {
     }
 
     return matchSearch
+  })
+
+  const sortedPagos = [...filteredPagos].sort((a, b) => {
+    if (!sortConfig.direction) return 0
+
+    let aValue: any
+    let bValue: any
+
+    if (sortConfig.key === 'factura') {
+      aValue = (a.venta as any)?.numero_factura || ''
+      bValue = (b.venta as any)?.numero_factura || ''
+    } else if (sortConfig.key === 'empresa') {
+      aValue = (a.empresa as any)?.nombre || ''
+      bValue = (b.empresa as any)?.nombre || ''
+    } else if (sortConfig.key === 'fecha_pago') {
+      aValue = new Date(a.fecha_pago)
+      bValue = new Date(b.fecha_pago)
+    } else {
+      aValue = a[sortConfig.key as keyof PagoFactura]
+      bValue = b[sortConfig.key as keyof PagoFactura]
+    }
+
+    if (aValue === null || aValue === undefined) return 1
+    if (bValue === null || bValue === undefined) return -1
+
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      const comparison = aValue.localeCompare(bValue, 'es', { numeric: true })
+      return sortConfig.direction === 'asc' ? comparison : -comparison
+    }
+
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+    }
+
+    if (aValue instanceof Date || bValue instanceof Date) {
+      const aDate = new Date(aValue)
+      const bDate = new Date(bValue)
+      const comparison = aDate.getTime() - bDate.getTime()
+      return sortConfig.direction === 'asc' ? comparison : -comparison
+    }
+
+    return 0
   })
 
   if (loading) {
@@ -189,38 +267,101 @@ export default function FacturasPage() {
           <table className="w-full">
             <thead className="bg-accent/50 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Factura
+                <th
+                  onClick={() => handleSort('factura')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Factura
+                    {sortConfig.key === 'factura' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Empresa
+                <th
+                  onClick={() => handleSort('empresa')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Empresa
+                    {sortConfig.key === 'empresa' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Monto
+                <th
+                  onClick={() => handleSort('monto')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Monto
+                    {sortConfig.key === 'monto' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Fecha de Pago
+                <th
+                  onClick={() => handleSort('fecha_pago')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Fecha de Pago
+                    {sortConfig.key === 'fecha_pago' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Método
+                <th
+                  onClick={() => handleSort('metodo_pago')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Método
+                    {sortConfig.key === 'metodo_pago' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Referencia
+                <th
+                  onClick={() => handleSort('referencia')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Referencia
+                    {sortConfig.key === 'referencia' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Estado
+                <th
+                  onClick={() => handleSort('estado')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Estado
+                    {sortConfig.key === 'estado' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredPagos.length === 0 ? (
+              {sortedPagos.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
-                    No se encontraron pagos registrados
+                    {pagos.length === 0 ? 'No hay pagos registrados' : 'No se encontraron pagos con ese criterio'}
                   </td>
                 </tr>
               ) : (
-                filteredPagos.map((pago) => (
+                sortedPagos.map((pago) => (
                   <tr key={pago.id} className="hover:bg-accent/30 transition-all hover:scale-[1.01] cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                       {(pago.venta as any)?.numero_factura || '-'}

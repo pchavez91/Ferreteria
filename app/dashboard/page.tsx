@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Package, DollarSign, TrendingUp, Users } from 'lucide-react'
 import {
@@ -25,6 +26,7 @@ interface VentasMensuales {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [stats, setStats] = useState({
     productos: 0,
     ventasHoy: 0,
@@ -185,6 +187,7 @@ export default function DashboardPage() {
       icon: Package,
       gradient: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-500/10',
+      route: '/dashboard/productos',
     },
     {
       title: 'Ventas Hoy',
@@ -192,6 +195,7 @@ export default function DashboardPage() {
       icon: TrendingUp,
       gradient: 'from-green-500 to-green-600',
       bgColor: 'bg-green-500/10',
+      route: '/dashboard/ventas',
     },
     {
       title: 'Ingresos Hoy',
@@ -199,6 +203,7 @@ export default function DashboardPage() {
       icon: DollarSign,
       gradient: 'from-yellow-500 to-yellow-600',
       bgColor: 'bg-yellow-500/10',
+      route: '/dashboard/ventas',
     },
     {
       title: 'Empresas',
@@ -206,6 +211,7 @@ export default function DashboardPage() {
       icon: Users,
       gradient: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-500/10',
+      route: '/dashboard/empresas',
     },
   ]
 
@@ -217,7 +223,8 @@ export default function DashboardPage() {
         {statCards.map((stat, index) => (
           <div
             key={index}
-            className="bg-card rounded-xl shadow-lg border border-border p-6 hover-lift hover-glow card-interactive"
+            onClick={() => router.push(stat.route)}
+            className="bg-card rounded-xl shadow-lg border border-border p-6 hover-lift hover-glow card-interactive cursor-pointer transition-all"
           >
             <div className="flex items-center justify-between">
               <div>

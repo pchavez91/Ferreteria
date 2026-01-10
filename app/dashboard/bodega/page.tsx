@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { MovimientoBodega, Producto } from '@/lib/types'
-import { Plus, Package, TrendingUp, TrendingDown, RotateCcw } from 'lucide-react'
+import { Plus, Package, TrendingUp, TrendingDown, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react'
 import MovimientoModal from '@/components/MovimientoModal'
 
 export default function BodegaPage() {
@@ -11,6 +11,10 @@ export default function BodegaPage() {
   const [productos, setProductos] = useState<Producto[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({
+    key: 'created_at',
+    direction: 'desc',
+  })
 
   useEffect(() => {
     loadMovimientos()
@@ -19,18 +23,36 @@ export default function BodegaPage() {
 
   const loadMovimientos = async () => {
     try {
-      const { data, error } = await supabase
+      // Obtener movimientos sin relaciones para evitar error de relaciones múltiples
+      const { data: movimientosData, error: movimientosError } = await supabase
         .from('movimientos_bodega')
-        .select(`
-          *,
-          producto:productos(*),
-          usuario:usuarios(*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(200)
 
-      if (error) throw error
-      setMovimientos(data || [])
+      if (movimientosError) throw movimientosError
+
+      // Obtener productos y usuarios por separado
+      const productoIds = [...new Set((movimientosData || []).map(m => m.producto_id).filter(Boolean))]
+      const { data: productosData } = await supabase
+        .from('productos')
+        .select('*')
+        .in('id', productoIds)
+
+      const usuarioIds = [...new Set((movimientosData || []).map(m => m.usuario_id).filter(Boolean))]
+      const { data: usuariosData } = await supabase
+        .from('usuarios')
+        .select('*')
+        .in('id', usuarioIds)
+
+      // Combinar datos
+      const movimientosConDatos = (movimientosData || []).map(movimiento => ({
+        ...movimiento,
+        producto: productosData?.find(p => p.id === movimiento.producto_id) || null,
+        usuario: usuariosData?.find(u => u.id === movimiento.usuario_id) || null,
+      }))
+
+      setMovimientos(movimientosConDatos as any)
     } catch (error) {
       console.error('Error al cargar movimientos:', error)
     } finally {
@@ -79,6 +101,56 @@ export default function BodegaPage() {
     }
   }
 
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' }
+        if (prev.direction === 'desc') return { key, direction: null }
+        return { key, direction: 'asc' }
+      }
+      return { key, direction: 'asc' }
+    })
+  }
+
+  const sortedMovimientos = [...movimientos].sort((a, b) => {
+    if (!sortConfig.direction) return 0
+
+    let aValue: any
+    let bValue: any
+
+    if (sortConfig.key === 'producto') {
+      aValue = (a.producto as any)?.nombre || ''
+      bValue = (b.producto as any)?.nombre || ''
+    } else if (sortConfig.key === 'usuario') {
+      aValue = (a.usuario as any)?.nombre || ''
+      bValue = (b.usuario as any)?.nombre || ''
+    } else {
+      aValue = a[sortConfig.key as keyof MovimientoBodega]
+      bValue = b[sortConfig.key as keyof MovimientoBodega]
+    }
+
+    if (aValue === null || aValue === undefined) return 1
+    if (bValue === null || bValue === undefined) return -1
+
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      const comparison = aValue.localeCompare(bValue, 'es', { numeric: true })
+      return sortConfig.direction === 'asc' ? comparison : -comparison
+    }
+
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+    }
+
+    if (aValue instanceof Date || typeof aValue === 'string') {
+      const aDate = new Date(aValue)
+      const bDate = new Date(bValue)
+      const comparison = aDate.getTime() - bDate.getTime()
+      return sortConfig.direction === 'asc' ? comparison : -comparison
+    }
+
+    return 0
+  })
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -106,35 +178,89 @@ export default function BodegaPage() {
           <table className="w-full">
             <thead className="bg-accent/50 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Fecha
+                <th
+                  onClick={() => handleSort('created_at')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Fecha
+                    {sortConfig.key === 'created_at' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Tipo
+                <th
+                  onClick={() => handleSort('tipo')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Tipo
+                    {sortConfig.key === 'tipo' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Producto
+                <th
+                  onClick={() => handleSort('producto')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Producto
+                    {sortConfig.key === 'producto' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Cantidad
+                <th
+                  onClick={() => handleSort('cantidad')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Cantidad
+                    {sortConfig.key === 'cantidad' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Motivo
+                <th
+                  onClick={() => handleSort('motivo')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Motivo
+                    {sortConfig.key === 'motivo' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider">
-                  Usuario
+                <th
+                  onClick={() => handleSort('usuario')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Usuario
+                    {sortConfig.key === 'usuario' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {movimientos.length === 0 ? (
+              {sortedMovimientos.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
-                    No hay movimientos registrados
+                    {movimientos.length === 0 ? 'No hay movimientos registrados' : 'No se encontraron movimientos con ese criterio'}
                   </td>
                 </tr>
               ) : (
-                movimientos.map((movimiento) => (
+                sortedMovimientos.map((movimiento) => (
                   <tr key={movimiento.id} className="hover:bg-accent/30 transition-all hover:scale-[1.01] cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                       {new Date(movimiento.created_at).toLocaleDateString('es-ES', {

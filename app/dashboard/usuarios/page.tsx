@@ -30,15 +30,28 @@ export default function UsuariosPage() {
 
   const loadUsuarios = async () => {
     try {
+      // Cargar TODOS los usuarios (activos e inactivos)
       const { data: usuariosData, error: usuariosError } = await supabase
         .from('usuarios')
         .select('*')
+        .order('created_at', { ascending: false })
 
-      if (usuariosError) throw usuariosError
+      if (usuariosError) {
+        console.error('Error al cargar usuarios:', usuariosError)
+        throw usuariosError
+      }
 
+      // Cargar TODAS las sesiones de usuarios
       const { data: sesionesData, error: sesionesError } = await supabase
         .from('sesiones_usuarios')
-        .select('usuario_id, esta_activo, ultima_conexion')
+        .select('usuario_id, esta_activo, ultima_conexion, hora_conexion')
+
+      if (sesionesError) {
+        console.error('Error al cargar sesiones:', sesionesError)
+      }
+
+      console.log('Usuarios cargados:', usuariosData?.length || 0)
+      console.log('Sesiones cargadas:', sesionesData?.length || 0)
 
       // Combinar datos de usuarios con sesiones
       const usuariosConSesion: UsuarioConSesion[] = (usuariosData || []).map((usuario) => {
@@ -47,12 +60,15 @@ export default function UsuariosPage() {
           ...usuario,
           esta_activo: sesion?.esta_activo || false,
           ultima_conexion: sesion?.ultima_conexion || null,
+          hora_conexion: sesion?.hora_conexion || null,
         }
       })
 
+      console.log('Usuarios con sesión:', usuariosConSesion.length)
       setUsuarios(usuariosConSesion)
     } catch (error) {
       console.error('Error al cargar usuarios:', error)
+      alert('Error al cargar usuarios. Verifica la consola para más detalles.')
     } finally {
       setLoading(false)
     }
@@ -222,8 +238,20 @@ export default function UsuariosPage() {
                   className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
                 >
                   <div className="flex items-center">
-                    Conexión
+                    Estado Conexión
                     {sortConfig.key === 'esta_activo' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
+                      sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
+                    )}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('ultima_conexion')}
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer hover:bg-accent/70 transition-colors select-none"
+                >
+                  <div className="flex items-center">
+                    Última Conexión
+                    {sortConfig.key === 'ultima_conexion' && (
                       sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> :
                       sortConfig.direction === 'desc' ? <ChevronDown className="w-4 h-4 ml-1" /> : null
                     )}
@@ -265,7 +293,7 @@ export default function UsuariosPage() {
                   u.email.toLowerCase().includes(searchTerm.toLowerCase())
               ).length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">
                     <Users className="w-12 h-12 mx-auto mb-2 text-muted-foreground opacity-50" />
                     <p>No se encontraron usuarios</p>
                   </td>
@@ -289,14 +317,41 @@ export default function UsuariosPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Circle
-                          className={`w-2 h-2 ${usuario.esta_activo ? 'text-green-400 fill-green-400' : 'text-gray-400'}`}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {usuario.esta_activo ? 'Conectado' : 'Desconectado'}
-                        </span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <Circle
+                            className={`w-2 h-2 ${usuario.esta_activo ? 'text-green-400 fill-green-400 animate-pulse' : 'text-gray-400'}`}
+                          />
+                          <span className={`text-xs font-medium ${usuario.esta_activo ? 'text-green-400' : 'text-gray-400'}`}>
+                            {usuario.esta_activo ? 'Conectado' : 'Desconectado'}
+                          </span>
+                        </div>
+                        {usuario.esta_activo && usuario.hora_conexion && (
+                          <span className="text-xs text-muted-foreground ml-4">
+                            {(() => {
+                              const ahora = new Date()
+                              const inicio = new Date(usuario.hora_conexion)
+                              const diffMs = ahora.getTime() - inicio.getTime()
+                              const horas = Math.floor(diffMs / (1000 * 60 * 60))
+                              const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+                              if (horas > 0) return `Hace ${horas}h ${minutos}m`
+                              return `Hace ${minutos}m`
+                            })()}
+                          </span>
+                        )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {usuario.ultima_conexion ? (
+                        <div className="flex flex-col">
+                          <span>{new Date(usuario.ultima_conexion).toLocaleDateString('es-ES')}</span>
+                          <span className="text-xs text-muted-foreground/70">
+                            {new Date(usuario.ultima_conexion).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/50">Nunca</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
