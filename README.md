@@ -1,211 +1,210 @@
 # Sistema de Gestión para Ferretería
 
-Sistema completo de gestión para ferretería desarrollado con Next.js, TypeScript, Supabase y Tailwind CSS. Diseñado para ser desplegado gratuitamente en Vercel.
+Sistema completo de gestión empresarial desarrollado para administrar una ferretería, incluyendo punto de venta, control de inventario, facturación y reportes. Construido con tecnologías modernas y pensado para ser escalable y fácil de usar.
 
-## 🚀 Características
+## 🚀 Características Principales
 
-- **Autenticación**: Sistema de login con diferentes roles de usuario
-- **Gestión de Productos**: CRUD completo con código de barras, categorías, precios unitarios y por mayor
-- **Bodega**: Control de inventario con movimientos de entrada, salida y ajustes
-- **Punto de Venta (Caja)**: Sistema de ventas con diferentes métodos de pago (efectivo, tarjeta, factura)
-- **Gestión de Empresas**: Registro y gestión de empresas para facturación
-- **Facturación**: Control de pagos de facturas a empresas
-- **Contabilidad**: Visualización de ventas y reportes
-- **Usuarios**: Gestión de usuarios con diferentes roles (Admin, Bodega, Caja, Contabilidad)
-- **Configuración**: Gestión de categorías y configuraciones del sistema
+### Punto de Venta (POS)
+Sistema de ventas completo con múltiples métodos de pago (efectivo, tarjeta, factura), cálculo automático de IVA, descuentos y generación de boletas imprimibles. Interfaz intuitiva optimizada para uso en tablet o computadora.
 
-## 🛠️ Tecnologías
+### Gestión de Inventario
+Control completo de productos con código de barras, categorías, precios unitarios y por mayor, seguimiento de stock en tiempo real y alertas de stock mínimo. Sistema de movimientos de bodega para registrar entradas, salidas y ajustes.
 
-- **Next.js 14**: Framework React con App Router
-- **TypeScript**: Tipado estático
-- **Supabase**: Base de datos y autenticación
-- **Tailwind CSS**: Estilos
-- **Vercel**: Hosting y deployment
+### Facturación
+Sistema de facturación a empresas con control de pagos, seguimiento de facturas pendientes y múltiples métodos de pago. Gestión de empresas clientes con datos completos.
 
-## 📋 Requisitos Previos
+### Dashboard y Reportes
+Dashboard con estadísticas en tiempo real, gráficos comparativos de ventas anuales, visualización de ingresos y análisis de rendimiento. Todas las tablas incluyen ordenamiento por columnas.
 
-- Node.js 18+ instalado
-- Cuenta de Supabase (gratuita)
-- Cuenta de Vercel (gratuita)
+### Gestión de Usuarios
+Sistema de roles y permisos (Administrador, Bodega, Caja, Contabilidad) con control de acceso basado en roles. Seguimiento de sesiones de usuarios y estado de conexión.
+
+## 🛠️ Stack Tecnológico
+
+- **Next.js 14** - Framework React con App Router
+- **TypeScript** - Tipado estático para mayor robustez
+- **Supabase** - Base de datos PostgreSQL, autenticación y Row Level Security
+- **Tailwind CSS** - Estilos modernos y responsivos
+- **Recharts** - Gráficos y visualización de datos
+
+## 📋 Requisitos
+
+- Node.js 18 o superior
+- Cuenta de Supabase (plan gratuito funciona perfectamente)
 - Git
 
-## 🔧 Instalación
+## ⚙️ Instalación
 
-1. **Clonar el repositorio**
-   ```bash
-   git clone <tu-repositorio>
-   cd Ferreteria
-   ```
+### 1. Clonar el repositorio
+```bash
+git clone <url-del-repositorio>
+cd Ferreteria
+```
 
-2. **Instalar dependencias**
-   ```bash
-   npm install
-   ```
+### 2. Instalar dependencias
+```bash
+npm install
+```
 
-3. **Configurar Supabase**
-   - Crea un nuevo proyecto en [Supabase](https://supabase.com)
-   - Ve a SQL Editor y ejecuta el contenido del archivo `supabase/schema.sql`
-   - Ve a Settings > API y copia:
-     - Project URL
-     - anon/public key
+### 3. Configurar Supabase
 
-4. **Configurar variables de entorno**
-   - Crea un archivo `.env.local` en la raíz del proyecto:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=tu_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_supabase_anon_key
-   ```
+Crea un nuevo proyecto en [Supabase](https://supabase.com) y sigue estos pasos:
 
-5. **Ejecutar en desarrollo**
-   ```bash
-   npm run dev
-   ```
+#### Configurar la Base de Datos
 
-   Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+1. Ve a **SQL Editor** en tu proyecto de Supabase
+2. Ejecuta el archivo `supabase/schema.sql` - esto creará todas las tablas necesarias
+3. Ejecuta `supabase/updates_schema.sql` - esto agrega campos adicionales (vendedor_id, sesiones_usuarios)
+4. Ejecuta `supabase/fix_sesiones_constraint.sql` - necesario para el sistema de sesiones
+5. Ejecuta `supabase/rls_policies.sql` - esto configurará las políticas de seguridad (RLS)
+
+#### Cargar Datos de Prueba (Opcional pero recomendado)
+
+Para probar el sistema con datos realistas:
+
+1. Ejecuta `supabase/seed_data_complete.sql` - carga categorías, proveedores, productos y empresas
+2. Ejecuta `supabase/create_test_transactions.sql` - genera transacciones de prueba con diferentes fechas para los gráficos
+
+#### Configurar Autenticación
+
+1. Ve a **Authentication > Settings** en Supabase
+2. Asegúrate de que **Email** esté habilitado como método de autenticación
+
+#### Crear Usuario Administrador
+
+1. Ve a **Authentication > Users** en Supabase
+2. Haz clic en **Add user** > **Create new user**
+3. Ingresa un email y contraseña
+4. Copia el **User UID** que se genera
+5. Ve a **SQL Editor** y ejecuta (reemplaza el UUID y email con los tuyos):
+
+```sql
+INSERT INTO public.usuarios (id, email, nombre, rol, activo)
+VALUES (
+  'TU_USER_UID_AQUI',
+  'tu-email@ejemplo.com',
+  'Administrador',
+  'admin',
+  true
+);
+```
+
+### 4. Configurar Variables de Entorno
+
+Crea un archivo `.env.local` en la raíz del proyecto:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=tu_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_supabase_anon_key
+```
+
+Para obtener estas credenciales:
+1. Ve a **Settings > API** en tu proyecto de Supabase
+2. Copia la **Project URL** como `NEXT_PUBLIC_SUPABASE_URL`
+3. Copia la **anon public** key como `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### 5. Ejecutar en Desarrollo
+
+```bash
+npm run dev
+```
+
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
 ## 🌐 Ejecutar en Red Local
 
-Para acceder a la aplicación desde otros dispositivos en tu red local:
+Para acceder desde otros dispositivos en tu red local (útil para probar el POS en tablet):
 
-1. **Obtener tu IP local:**
-   - Windows: Abre PowerShell y ejecuta `ipconfig`, busca "IPv4 Address"
-   - Mac/Linux: Ejecuta `ifconfig` o `ip addr`, busca tu dirección IP local (generalmente 192.168.x.x)
+1. Obtén tu IP local:
+   - Windows: `ipconfig` en PowerShell, busca "IPv4 Address"
+   - Mac/Linux: `ifconfig` o `ip addr`, busca 192.168.x.x
 
-2. **Ejecutar Next.js en modo red:**
+2. Ejecuta Next.js escuchando en todas las interfaces:
    ```bash
    npm run dev -- -H 0.0.0.0
    ```
-   
-   O modifica el script en `package.json`:
-   ```json
-   "dev": "next dev -H 0.0.0.0"
-   ```
 
-3. **Acceder desde otros dispositivos:**
-   - Desde tu computadora: `http://localhost:3000`
-   - Desde otros dispositivos en la red: `http://TU_IP_LOCAL:3000`
-   - Ejemplo: `http://192.168.1.100:3000`
+3. Accede desde otros dispositivos: `http://TU_IP_LOCAL:3000`
 
-4. **Nota de seguridad:**
-   - Solo funciona en tu red local (misma WiFi/LAN)
-   - No es accesible desde internet
-   - Asegúrate de que tu firewall permita conexiones en el puerto 3000
+## 🚀 Despliegue en Vercel
 
-## 🗄️ Configuración de Base de Datos
+El despliegue en Vercel es gratuito y muy sencillo:
 
-1. **Ejecutar el schema principal:**
-   - Ve a SQL Editor en tu proyecto de Supabase
-   - Copia y pega el contenido de `supabase/schema.sql`
-   - Ejecuta el script
+1. Sube tu código a GitHub
+2. Ve a [Vercel](https://vercel.com) y conecta tu repositorio
+3. Agrega las variables de entorno en **Settings > Environment Variables**:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Vercel desplegará automáticamente tu aplicación
 
-2. **Cargar datos de prueba (opcional pero recomendado):**
-   - Ejecuta `supabase/seed_data_complete.sql` para cargar:
-     - 10 categorías
-     - 8 proveedores
-     - 150 productos
-     - 8 empresas
-   
-3. **Crear usuarios de prueba:**
-   - Consulta el archivo `USUARIOS_PRUEBA.md` para las credenciales
-   - Crea los usuarios en Authentication > Users de Supabase
-   - Ejecuta el script SQL del documento para asignar roles
+## 👥 Roles de Usuario
 
-4. **Cargar transacciones de prueba (opcional):**
-   - Ejecuta `supabase/transacciones_prueba.sql` para crear:
-     - Movimientos de bodega
-     - Ventas de prueba
-     - Pagos de facturas
-   - **Nota:** Ajusta los UUIDs en el script con los IDs reales de tus usuarios
-
-## 🚀 Deployment en Vercel
-
-1. **Preparar el repositorio**
-   ```bash
-   git add .
-   git commit -m "Initial commit"
-   git push origin main
-   ```
-
-2. **Conectar con Vercel**
-   - Ve a [Vercel](https://vercel.com)
-   - Importa tu repositorio de GitHub
-   - Vercel detectará automáticamente que es un proyecto Next.js
-
-3. **Configurar variables de entorno en Vercel**
-   - En el dashboard de Vercel, ve a Settings > Environment Variables
-   - Agrega:
-     - `NEXT_PUBLIC_SUPABASE_URL`: Tu URL de Supabase
-     - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Tu anon key de Supabase
-
-4. **Deploy**
-   - Vercel desplegará automáticamente
-   - Tu aplicación estará disponible en `tu-proyecto.vercel.app`
-
-## 📱 Roles de Usuario
+El sistema incluye 4 roles diferentes:
 
 - **Admin**: Acceso completo a todas las funcionalidades
 - **Bodega**: Gestión de inventario y movimientos de bodega
-- **Caja**: Punto de venta y procesamiento de ventas
+- **Caja**: Punto de venta (POS) y procesamiento de ventas
 - **Contabilidad**: Visualización de ventas, facturas y reportes
 
-## 🎯 Funcionalidades Principales
-
-### Productos
-- Código de barras
-- Categorías
-- Precios unitarios y por mayor
-- Control de stock
-- Unidades de medida
-- Proveedores
-
-### Ventas
-- Carrito de compras
-- Múltiples métodos de pago (efectivo, tarjeta, factura)
-- Descuentos
-- Facturación a empresas
-- Generación automática de números de factura
-
-### Bodega
-- Movimientos de entrada/salida
-- Ajustes de inventario
-- Historial de movimientos
-- Control de stock mínimo
-
-### Empresas
-- Registro de empresas
-- NIT y datos de contacto
-- Facturación a empresas
-- Control de pagos
+Para crear usuarios adicionales, primero créalos en **Authentication > Users** de Supabase, luego agrega su registro en la tabla `usuarios` con el rol correspondiente.
 
 ## 📝 Notas Importantes
 
-- El sistema usa Row Level Security (RLS) en Supabase para seguridad
-- Ajusta las políticas RLS según tus necesidades de seguridad
-- Para producción, considera agregar más validaciones y manejo de errores
-- El sistema está diseñado para ser completamente gratuito en el plan gratuito de Vercel y Supabase
+- El sistema usa **Row Level Security (RLS)** en Supabase para garantizar la seguridad de los datos
+- Todas las ventas se registran como boletas (incluso las facturadas a empresas)
+- El sistema está optimizado para funcionar en el plan gratuito de Vercel y Supabase
+- Para producción, considera agregar validaciones adicionales y manejo de errores más robusto
 
-## 🤝 Contribuciones
+## 🎯 Funcionalidades Detalladas
 
-Este es un proyecto de portafolio. Siéntete libre de hacer fork y adaptarlo a tus necesidades.
+### Gestión de Productos
+- Código de barras único
+- Categorías y proveedores
+- Precios unitarios y por mayor (con cantidad mínima)
+- Control de stock con alertas de stock mínimo
+- Unidades de medida personalizables
 
-## 📄 Licencia
+### Sistema de Ventas
+- Carrito de compras dinámico
+- Múltiples métodos de pago (efectivo con cálculo de vuelto, tarjeta, factura)
+- Cálculo automático de descuentos e IVA (19%)
+- Generación de boletas imprimibles
+- Historial completo de ventas con filtros y ordenamiento
 
-Este proyecto es de código abierto y está disponible para uso en portafolios.
+### Control de Bodega
+- Movimientos de entrada/salida/ajuste
+- Historial completo de movimientos
+- Tracking de quién realizó cada movimiento
+- Integración automática con el sistema de ventas
+
+### Facturación
+- Registro de empresas clientes
+- Facturación a empresas con seguimiento de pagos
+- Control de facturas pendientes
+- Múltiples métodos de pago para facturas
 
 ## 🐛 Solución de Problemas
 
-### Error de autenticación
+**Error de autenticación:**
 - Verifica que las variables de entorno estén correctamente configuradas
-- Asegúrate de que el usuario exista en la tabla `usuarios` de Supabase
+- Asegúrate de que el usuario exista tanto en Authentication como en la tabla `usuarios`
 
-### Error de permisos en Supabase
-- Revisa las políticas RLS en Supabase
-- Asegúrate de que el usuario tenga los permisos necesarios
+**Error de permisos (RLS):**
+- Verifica que hayas ejecutado `supabase/rls_policies.sql`
+- Asegúrate de que el usuario tenga el rol correcto en la tabla `usuarios`
 
-### Error en deployment
-- Verifica que todas las variables de entorno estén configuradas en Vercel
-- Revisa los logs de build en Vercel
+**Error al crear ventas:**
+- Verifica que las políticas RLS estén correctamente configuradas
+- Revisa la consola del navegador para ver errores específicos
 
-## 📧 Soporte
+## 📄 Licencia
 
-Para preguntas o problemas, abre un issue en el repositorio.
+Este proyecto está bajo la Licencia **MIT**. Siéntete libre de usarlo, hacerle fork y adaptarlo para tu propio portafolio.
+
+---
+
+**Desarrollado por [pchavez91](https://github.com/pchavez91)**
+
+Para consultas o colaboraciones, puedes contactarme en: pchavez.dev@gmail.com
+
+Desarrollado con ❤️ usando Next.js, TypeScript y Supabase
