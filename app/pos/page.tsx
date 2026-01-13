@@ -755,6 +755,15 @@ export default function POSPage() {
           formatearPeso={formatearPeso}
         />
       )}
+
+      {/* Modal de Cierre de Turno */}
+      {showCierreTurnoModal && user && (
+        <CierreTurnoModal
+          user={user}
+          onClose={() => setShowCierreTurnoModal(false)}
+          onConfirmLogout={handleConfirmLogout}
+        />
+      )}
     </div>
   )
 }
@@ -1155,16 +1164,6 @@ function PagoModal({
           </button>
         </div>
       </div>
-
-      {/* Modal de Cierre de Turno - Renderizado con Portal para evitar problemas de overflow */}
-      {showCierreTurnoModal && user && typeof window !== 'undefined' && createPortal(
-        <CierreTurnoModal
-          user={user}
-          onClose={() => setShowCierreTurnoModal(false)}
-          onConfirmLogout={handleConfirmLogout}
-        />,
-        document.body
-      )}
     </div>
   )
 }
