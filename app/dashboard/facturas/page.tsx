@@ -58,16 +58,16 @@ export default function FacturasPage() {
       if (ventasError) throw ventasError
 
       // Obtener empresas y usuarios por separado
-      const empresaIds = [...new Set((ventasData || []).map(v => v.empresa_id).filter(Boolean))]
+      const empresaIds = Array.from(new Set((ventasData || []).map(v => v.empresa_id).filter(Boolean)))
       const { data: empresasData } = await supabase
         .from('empresas')
         .select('*')
         .in('id', empresaIds)
 
-      const usuarioIds = [...new Set([
+      const usuarioIds = Array.from(new Set([
         ...(ventasData || []).map(v => v.usuario_id).filter(Boolean),
         ...(ventasData || []).map(v => v.vendedor_id).filter(Boolean)
-      ])]
+      ]))
       const { data: usuariosData } = await supabase
         .from('usuarios')
         .select('*')

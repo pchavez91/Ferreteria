@@ -33,13 +33,13 @@ export default function BodegaPage() {
       if (movimientosError) throw movimientosError
 
       // Obtener productos y usuarios por separado
-      const productoIds = [...new Set((movimientosData || []).map(m => m.producto_id).filter(Boolean))]
+      const productoIds = Array.from(new Set((movimientosData || []).map(m => m.producto_id).filter(Boolean)))
       const { data: productosData } = await supabase
         .from('productos')
         .select('*')
         .in('id', productoIds)
 
-      const usuarioIds = [...new Set((movimientosData || []).map(m => m.usuario_id).filter(Boolean))]
+      const usuarioIds = Array.from(new Set((movimientosData || []).map(m => m.usuario_id).filter(Boolean)))
       const { data: usuariosData } = await supabase
         .from('usuarios')
         .select('*')
