@@ -54,7 +54,7 @@ export default function BodegaPage() {
 
       setMovimientos(movimientosConDatos as any)
     } catch (error) {
-      console.error('Error al cargar movimientos:', error)
+      // Error silencioso
     } finally {
       setLoading(false)
     }
@@ -71,7 +71,7 @@ export default function BodegaPage() {
       if (error) throw error
       setProductos(data || [])
     } catch (error) {
-      console.error('Error al cargar productos:', error)
+      // Error silencioso
     }
   }
 

@@ -37,21 +37,13 @@ export default function UsuariosPage() {
         .order('created_at', { ascending: false })
 
       if (usuariosError) {
-        console.error('Error al cargar usuarios:', usuariosError)
         throw usuariosError
       }
 
       // Cargar TODAS las sesiones de usuarios
-      const { data: sesionesData, error: sesionesError } = await supabase
+      const { data: sesionesData } = await supabase
         .from('sesiones_usuarios')
         .select('usuario_id, esta_activo, ultima_conexion, hora_conexion')
-
-      if (sesionesError) {
-        console.error('Error al cargar sesiones:', sesionesError)
-      }
-
-      console.log('Usuarios cargados:', usuariosData?.length || 0)
-      console.log('Sesiones cargadas:', sesionesData?.length || 0)
 
       // Combinar datos de usuarios con sesiones
       const usuariosConSesion: UsuarioConSesion[] = (usuariosData || []).map((usuario) => {
@@ -64,11 +56,9 @@ export default function UsuariosPage() {
         }
       })
 
-      console.log('Usuarios con sesión:', usuariosConSesion.length)
       setUsuarios(usuariosConSesion)
-    } catch (error) {
-      console.error('Error al cargar usuarios:', error)
-      alert('Error al cargar usuarios. Verifica la consola para más detalles.')
+    } catch (error: any) {
+      alert('Error al cargar usuarios: ' + (error.message || 'Error desconocido'))
     } finally {
       setLoading(false)
     }
@@ -134,9 +124,8 @@ export default function UsuariosPage() {
 
       if (error) throw error
       loadUsuarios()
-    } catch (error) {
-      console.error('Error al desactivar usuario:', error)
-      alert('Error al desactivar usuario')
+    } catch (error: any) {
+      alert('Error al desactivar usuario: ' + (error.message || 'Error desconocido'))
     }
   }
 

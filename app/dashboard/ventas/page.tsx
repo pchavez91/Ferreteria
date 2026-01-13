@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Venta } from '@/lib/types'
-import { Search, ChevronUp, ChevronDown, Receipt, X } from 'lucide-react'
+import { Search, ChevronUp, ChevronDown, Receipt, X, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale/es'
 
@@ -11,6 +11,10 @@ export default function VentasPage() {
   const [ventas, setVentas] = useState<Venta[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
+  const [tipoPagoFilter, setTipoPagoFilter] = useState<string>('')
+  const [estadoFilter, setEstadoFilter] = useState<string>('')
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({
     key: 'created_at',
     direction: 'desc',
@@ -33,7 +37,6 @@ export default function VentasPage() {
         .limit(200)
 
       if (ventasError) {
-        console.error('Error al cargar ventas:', ventasError)
         throw ventasError
       }
 
@@ -61,12 +64,9 @@ export default function VentasPage() {
         usuario: usuariosData?.find(u => u.id === venta.vendedor_id || u.id === venta.usuario_id) || null,
       }))
       
-      console.log('Ventas cargadas:', ventasConDatos.length)
-      console.log('Datos de ventas:', ventasConDatos)
       setVentas(ventasConDatos as any)
-    } catch (error) {
-      console.error('Error al cargar ventas:', error)
-      alert('Error al cargar ventas. Revisa la consola para más detalles.')
+    } catch (error: any) {
+      alert('Error al cargar ventas: ' + (error.message || 'Error desconocido'))
     } finally {
       setLoading(false)
     }
@@ -122,11 +122,26 @@ export default function VentasPage() {
     return 0
   })
 
-  const filteredVentas = sortedVentas.filter(
-    (v) =>
+  const filteredVentas = sortedVentas.filter((v) => {
+    // Filtro de búsqueda de texto
+    const matchSearch = 
       v.numero_factura.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (v.empresa as any)?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+      (v.empresa as any)?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (v.usuario as any)?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    // Filtro de fecha
+    const fechaVenta = new Date(v.created_at)
+    const matchFechaInicio = !fechaInicio || fechaVenta >= new Date(fechaInicio + 'T00:00:00')
+    const matchFechaFin = !fechaFin || fechaVenta <= new Date(fechaFin + 'T23:59:59')
+    
+    // Filtro de tipo de pago
+    const matchTipoPago = !tipoPagoFilter || v.tipo_pago === tipoPagoFilter
+    
+    // Filtro de estado
+    const matchEstado = !estadoFilter || v.estado === estadoFilter
+    
+    return matchSearch && matchFechaInicio && matchFechaFin && matchTipoPago && matchEstado
+  })
 
   const handleVerBoleta = async (venta: Venta) => {
     try {
@@ -144,9 +159,8 @@ export default function VentasPage() {
       setDetallesVenta(detalles || [])
       setSelectedVenta(venta)
       setShowBoletaModal(true)
-    } catch (error) {
-      console.error('Error al cargar detalles de venta:', error)
-      alert('Error al cargar los detalles de la venta')
+    } catch (error: any) {
+      alert('Error al cargar los detalles de la venta: ' + (error.message || 'Error desconocido'))
     }
   }
 
@@ -176,16 +190,71 @@ export default function VentasPage() {
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
           <input
             type="text"
-            placeholder="Buscar por número de factura o empresa..."
+            placeholder="Buscar por número de factura, empresa o vendedor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary"
           />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+            <input
+              type="date"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+              placeholder="Fecha inicio"
+            />
+          </div>
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+            <input
+              type="date"
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+              placeholder="Fecha fin"
+            />
+          </div>
+          <select
+            value={tipoPagoFilter}
+            onChange={(e) => setTipoPagoFilter(e.target.value)}
+            className="px-4 py-2.5 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+          >
+            <option value="">Todos los pagos</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="factura">Factura</option>
+          </select>
+          <select
+            value={estadoFilter}
+            onChange={(e) => setEstadoFilter(e.target.value)}
+            className="px-4 py-2.5 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+          >
+            <option value="">Todos los estados</option>
+            <option value="completada">Completada</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <button
+            onClick={() => {
+              setFechaInicio('')
+              setFechaFin('')
+              setTipoPagoFilter('')
+              setEstadoFilter('')
+              setSearchTerm('')
+            }}
+            className="px-4 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors font-medium"
+          >
+            Limpiar filtros
+          </button>
         </div>
       </div>
 

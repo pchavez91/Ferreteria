@@ -31,7 +31,7 @@ export default function EmpresasPage() {
       if (error) throw error
       setEmpresas(data || [])
     } catch (error) {
-      console.error('Error al cargar empresas:', error)
+      // Error silencioso
     } finally {
       setLoading(false)
     }
@@ -53,9 +53,8 @@ export default function EmpresasPage() {
 
       if (error) throw error
       loadEmpresas()
-    } catch (error) {
-      console.error('Error al eliminar empresa:', error)
-      alert('Error al eliminar empresa')
+    } catch (error: any) {
+      alert('Error al eliminar empresa: ' + (error.message || 'Error desconocido'))
     }
   }
 

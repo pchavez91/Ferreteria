@@ -70,7 +70,7 @@ export default function DashboardPage() {
         empresas: empresasCount || 0,
       })
     } catch (error) {
-      console.error('Error al cargar estadísticas:', error)
+      // Error silencioso - las estadísticas se mostrarán en 0
     } finally {
       setLoading(false)
     }
@@ -132,7 +132,7 @@ export default function DashboardPage() {
 
       setVentasMensuales(datosMensuales)
     } catch (error) {
-      console.error('Error al cargar ventas mensuales:', error)
+      // Error silencioso - el gráfico se mostrará vacío
     }
   }
 

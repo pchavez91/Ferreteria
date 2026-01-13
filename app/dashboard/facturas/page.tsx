@@ -38,7 +38,7 @@ export default function FacturasPage() {
       if (error) throw error
       setPagos(data || [])
     } catch (error) {
-      console.error('Error al cargar pagos:', error)
+      // Error silencioso
     } finally {
       setLoading(false)
     }
@@ -82,7 +82,7 @@ export default function FacturasPage() {
 
       setVentasFactura(ventasConDatos as any)
     } catch (error) {
-      console.error('Error al cargar ventas a factura:', error)
+      // Error silencioso
     }
   }
 

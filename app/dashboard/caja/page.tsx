@@ -34,7 +34,7 @@ export default function CajaPage() {
       if (error) throw error
       setProductos(data || [])
     } catch (error) {
-      console.error('Error al cargar productos:', error)
+      // Error silencioso
     }
   }
 
@@ -49,7 +49,7 @@ export default function CajaPage() {
       if (error) throw error
       setEmpresas(data || [])
     } catch (error) {
-      console.error('Error al cargar empresas:', error)
+      // Error silencioso
     }
   }
 
@@ -168,7 +168,6 @@ export default function CajaPage() {
         .single()
 
       if (ventaError) {
-        console.error('Error al crear venta:', ventaError)
         throw ventaError
       }
 
@@ -193,7 +192,6 @@ export default function CajaPage() {
         .insert(detalles)
 
       if (detallesError) {
-        console.error('Error al crear detalles:', detallesError)
         throw detallesError
       }
 
@@ -224,7 +222,6 @@ export default function CajaPage() {
       setEmpresaId('')
       loadProductos()
     } catch (error: any) {
-      console.error('Error al procesar venta:', error)
       alert(`Error al procesar la venta: ${error.message || 'Error desconocido'}`)
     } finally {
       setLoading(false)

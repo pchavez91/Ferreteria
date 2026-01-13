@@ -27,7 +27,7 @@ export default function ConfiguracionPage() {
       if (error) throw error
       setCategorias(data || [])
     } catch (error) {
-      console.error('Error al cargar categorías:', error)
+      // Error silencioso
     } finally {
       setLoading(false)
     }
@@ -49,9 +49,8 @@ export default function ConfiguracionPage() {
 
       if (error) throw error
       loadCategorias()
-    } catch (error) {
-      console.error('Error al desactivar categoría:', error)
-      alert('Error al desactivar categoría')
+    } catch (error: any) {
+      alert('Error al desactivar categoría: ' + (error.message || 'Error desconocido'))
     }
   }
 

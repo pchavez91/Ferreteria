@@ -33,7 +33,6 @@ export default function DashboardLayout({
         .single()
 
       if (error || !usuario) {
-        console.error('Error al obtener usuario:', error)
         router.push('/login')
         return
       }
@@ -139,15 +138,89 @@ export default function DashboardLayout({
 
     return () => {
       subscription.unsubscribe()
+    }
+  }, [router, pathname])
+
+  // Efecto separado para manejar desconexión cuando user está disponible
+  useEffect(() => {
+    if (!user) return
+
+    // Detectar desconexión del navegador/ventana
+    const handleBeforeUnload = () => {
+      // Usar sendBeacon para enviar la actualización incluso si la página se cierra
+      const data = JSON.stringify({
+        usuario_id: user.id,
+        esta_activo: false,
+        updated_at: new Date().toISOString()
+      })
+      // Nota: sendBeacon requiere un endpoint específico, por ahora usamos una actualización directa
+      // En producción, podrías crear un endpoint API route para esto
+      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/sesiones_usuarios?usuario_id=eq.${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''}`
+        },
+        body: JSON.stringify({ esta_activo: false, updated_at: new Date().toISOString() }),
+        keepalive: true
+      }).catch(() => {}) // Ignorar errores en beforeunload
+    }
+
+    // Detectar cuando la pestaña/ventana pierde el foco
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Marcar como inactivo cuando la pestaña no está visible
+        supabase
+          .from('sesiones_usuarios')
+          .update({ esta_activo: false, updated_at: new Date().toISOString() })
+          .eq('usuario_id', user.id)
+          .then(() => {})
+      } else {
+        // Marcar como activo cuando la pestaña vuelve a estar visible
+        supabase
+          .from('sesiones_usuarios')
+          .update({ 
+            esta_activo: true, 
+            ultima_conexion: new Date().toISOString(),
+            updated_at: new Date().toISOString() 
+          })
+          .eq('usuario_id', user.id)
+          .then(() => {})
+      }
+    }
+
+    // Heartbeat para mantener la sesión activa mientras el usuario está conectado
+    const heartbeatInterval = setInterval(async () => {
+      if (!document.hidden && user) {
+        await supabase
+          .from('sesiones_usuarios')
+          .update({ 
+            ultima_conexion: new Date().toISOString(),
+            esta_activo: true,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('usuario_id', user.id)
+      }
+    }, 30000) // Cada 30 segundos
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      clearInterval(heartbeatInterval)
       // Marcar sesión como inactiva al desmontar
       if (user) {
         supabase
           .from('sesiones_usuarios')
           .update({ esta_activo: false, updated_at: new Date().toISOString() })
           .eq('usuario_id', user.id)
+          .then(() => {})
       }
     }
-  }, [router, pathname])
+  }, [user])
 
   if (loading) {
     return (

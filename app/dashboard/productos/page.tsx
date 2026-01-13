@@ -32,12 +32,14 @@ export default function ProductosPage() {
           categoria:categorias(*),
           proveedor:proveedores(*)
         `)
+        .eq('activo', true)
         .order('created_at', { ascending: false })
+        .limit(500)
 
       if (error) throw error
       setProductos(data || [])
     } catch (error) {
-      console.error('Error al cargar productos:', error)
+      // Error silencioso
     } finally {
       setLoading(false)
     }
@@ -54,7 +56,7 @@ export default function ProductosPage() {
       if (error) throw error
       setCategorias(data || [])
     } catch (error) {
-      console.error('Error al cargar categorías:', error)
+      // Error silencioso
     }
   }
 
@@ -74,9 +76,8 @@ export default function ProductosPage() {
 
       if (error) throw error
       loadProductos()
-    } catch (error) {
-      console.error('Error al eliminar producto:', error)
-      alert('Error al eliminar producto')
+    } catch (error: any) {
+      alert('Error al eliminar producto: ' + (error.message || 'Error desconocido'))
     }
   }
 
