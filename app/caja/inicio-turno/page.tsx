@@ -89,6 +89,18 @@ export default function InicioTurnoPage() {
   }
 
   const handleConfirmLogout = async () => {
+    // Actualizar el estado de la sesión como inactivo antes de cerrar
+    if (user) {
+      await supabase
+        .from('sesiones_usuarios')
+        .update({
+          esta_activo: false,
+          ultima_conexion: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('usuario_id', user.id)
+    }
+    
     await supabase.auth.signOut()
     router.push('/login')
   }

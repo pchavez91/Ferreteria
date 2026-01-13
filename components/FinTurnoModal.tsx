@@ -198,14 +198,17 @@ export default function FinTurnoModal({ user, turnoId, onClose, onTurnoFinalizad
         })
         .eq('id', turnoId)
 
-      // Cerrar la sesión del admin y restaurar la del cajero
-      await supabase.auth.signOut()
+      // Actualizar el estado de la sesión del cajero como inactivo
+      await supabase
+        .from('sesiones_usuarios')
+        .update({
+          esta_activo: false,
+          ultima_conexion: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('usuario_id', currentSession.user.id)
       
-      // Obtener la contraseña del cajero desde la base de datos (esto requiere que guardemos la contraseña hasheada)
-      // Por ahora, simplemente redirigimos y el cajero puede volver a iniciar sesión
-      // En producción, esto debería manejarse de forma más segura
-      
-      // Redirigir a inicio de turno (el cajero puede volver a iniciar sesión si lo desea)
+      // Redirigir a inicio de turno (el cajero mantiene su sesión pero está marcado como inactivo)
       onTurnoFinalizado()
     } catch (error: any) {
       // Si hay error, intentar restaurar el estado del turno
