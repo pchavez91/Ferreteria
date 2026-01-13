@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import EmpresaModal from '@/components/EmpresaModal'
 import CierreTurnoModal from '@/components/CierreTurnoModal'
+import FinTurnoModal from '@/components/FinTurnoModal'
 import { User } from '@/lib/types'
 
 export default function POSPage() {
@@ -37,6 +38,8 @@ export default function POSPage() {
   const [ventaCompletada, setVentaCompletada] = useState<any>(null)
   const [user, setUser] = useState<User | null>(null)
   const [showCierreTurnoModal, setShowCierreTurnoModal] = useState(false)
+  const [showFinTurnoModal, setShowFinTurnoModal] = useState(false)
+  const [turnoActivo, setTurnoActivo] = useState<any>(null)
   const carritoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -68,17 +71,30 @@ export default function POSPage() {
       .eq('id', session.user.id)
       .single()
 
-    // Página de caja temporalmente deshabilitada
-    // Solo admin puede acceder a POS por ahora
-    if (!usuario || usuario.rol !== 'admin') {
-      if (usuario?.rol === 'caja') {
-        // Cerrar sesión y redirigir al login con mensaje
-        await supabase.auth.signOut()
-        router.push('/login')
-        return
-      }
+    // Verificar permisos: admin o caja con turno activo
+    if (!usuario || (usuario.rol !== 'admin' && usuario.rol !== 'caja')) {
       router.push('/dashboard')
       return
+    }
+
+    // Si es cajero, verificar que tenga un turno activo
+    if (usuario.rol === 'caja') {
+      const { data: turno } = await supabase
+        .from('turnos_caja')
+        .select('*')
+        .eq('usuario_id', usuario.id)
+        .eq('estado', 'activo')
+        .order('fecha_inicio', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (!turno) {
+        // No hay turno activo, redirigir a inicio de turno
+        router.push('/caja/inicio-turno')
+        return
+      }
+
+      setTurnoActivo(turno)
     }
 
     // Actualizar sesión del usuario como activo
@@ -410,7 +426,13 @@ export default function POSPage() {
           <button
             onClick={() => {
               if (user) {
-                setShowCierreTurnoModal(true)
+                if (user.rol === 'caja' && turnoActivo) {
+                  // Para cajeros, mostrar modal de terminar turno
+                  setShowFinTurnoModal(true)
+                } else {
+                  // Para admin, mostrar modal de cierre de sesión
+                  setShowCierreTurnoModal(true)
+                }
               } else {
                 // Si no hay usuario, cerrar sesión directamente
                 supabase.auth.signOut().then(() => {
@@ -418,10 +440,10 @@ export default function POSPage() {
                 })
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg font-medium transition-all duration-200 hover:shadow-md border border-red-500/20"
           >
             <LogOut className="w-4 h-4" />
-            <span>Cerrar Sesión</span>
+            <span>{user?.rol === 'caja' ? 'Terminar Turno' : 'Cerrar Sesión'}</span>
           </button>
         </div>
       </div>
@@ -756,12 +778,25 @@ export default function POSPage() {
         />
       )}
 
-      {/* Modal de Cierre de Turno */}
-      {showCierreTurnoModal && user && (
+      {/* Modal de Cierre de Turno (solo para admin) */}
+      {showCierreTurnoModal && user && user.rol !== 'caja' && (
         <CierreTurnoModal
           user={user}
           onClose={() => setShowCierreTurnoModal(false)}
           onConfirmLogout={handleConfirmLogout}
+        />
+      )}
+
+      {/* Modal de Fin de Turno (solo para cajeros) */}
+      {showFinTurnoModal && user && user.rol === 'caja' && turnoActivo && (
+        <FinTurnoModal
+          user={user}
+          turnoId={turnoActivo.id}
+          onClose={() => setShowFinTurnoModal(false)}
+          onTurnoFinalizado={() => {
+            setShowFinTurnoModal(false)
+            router.push('/caja/inicio-turno')
+          }}
         />
       )}
     </div>

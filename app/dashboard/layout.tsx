@@ -72,11 +72,9 @@ export default function DashboardLayout({
 
       setUser(usuario)
       
-      // Página de caja temporalmente deshabilitada
-      // Usuarios de caja no pueden acceder por ahora
+      // Usuarios de caja redirigir a inicio de turno
       if (usuario.rol === 'caja') {
-        await supabase.auth.signOut()
-        router.push('/login')
+        router.push('/caja/inicio-turno')
         return
       }
       

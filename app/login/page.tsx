@@ -36,12 +36,8 @@ export default function LoginPage() {
 
         if (usuario && usuario.activo) {
           // Redirigir según el rol
-          // Página de caja temporalmente deshabilitada
           if (usuario.rol === 'caja') {
-            // No redirigir, dejar que el usuario vea el formulario de login
-            // con un mensaje de que la funcionalidad está deshabilitada
-            setCheckingSession(false)
-            return
+            router.push('/caja/inicio-turno')
           } else {
             router.push('/dashboard')
           }
@@ -98,12 +94,9 @@ export default function LoginPage() {
           })
 
         // Redirigir según el rol del usuario
-        // Página de caja temporalmente deshabilitada
         if (usuario.rol === 'caja') {
-          // Mostrar mensaje de que la funcionalidad está deshabilitada
-          setError('La funcionalidad de caja está temporalmente deshabilitada. Por favor, contacta al administrador.')
-          setLoading(false)
-          return
+          // Redirigir a la página de inicio de turno
+          router.push('/caja/inicio-turno')
         } else {
           router.push('/dashboard')
         }
