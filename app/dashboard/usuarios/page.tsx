@@ -8,7 +8,8 @@ import UsuarioModal from '@/components/UsuarioModal'
 
 interface UsuarioConSesion extends User {
   esta_activo?: boolean
-  ultima_conexion?: string
+  ultima_conexion?: string | null
+  hora_conexion?: string | null
 }
 
 export default function UsuariosPage() {
