@@ -8,14 +8,9 @@ export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    // Verificar si el usuario está autenticado
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        router.push('/dashboard')
-      } else {
-        router.push('/login')
-      }
-    })
+    // Siempre redirigir al login primero
+    // El login verificará si hay sesión y redirigirá apropiadamente
+    router.push('/login')
   }, [router])
 
   return (

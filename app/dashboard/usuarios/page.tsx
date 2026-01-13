@@ -46,12 +46,21 @@ export default function UsuariosPage() {
         .from('sesiones_usuarios')
         .select('usuario_id, esta_activo, ultima_conexion, hora_conexion')
 
+      // Obtener la sesión actual del usuario autenticado
+      const { data: { session } } = await supabase.auth.getSession()
+      const currentUserId = session?.user?.id
+
       // Combinar datos de usuarios con sesiones
       const usuariosConSesion: UsuarioConSesion[] = (usuariosData || []).map((usuario) => {
         const sesion = sesionesData?.find((s) => s.usuario_id === usuario.id)
+        
+        // Si es el usuario actual y tiene sesión activa en Supabase Auth, forzar esta_activo a true
+        const isCurrentUser = usuario.id === currentUserId
+        const estaActivo = isCurrentUser && session ? true : (sesion?.esta_activo || false)
+        
         return {
           ...usuario,
-          esta_activo: sesion?.esta_activo || false,
+          esta_activo: estaActivo,
           ultima_conexion: sesion?.ultima_conexion || null,
           hora_conexion: sesion?.hora_conexion || null,
         }

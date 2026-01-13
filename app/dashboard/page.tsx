@@ -216,23 +216,32 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-foreground mb-8">Dashboard</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">Resumen general del sistema</p>
+        </div>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, index) => (
           <div
             key={index}
             onClick={() => router.push(stat.route)}
-            className="bg-card rounded-xl shadow-lg border border-border p-6 hover-lift hover-glow card-interactive cursor-pointer transition-all"
+            className="group bg-card/80 backdrop-blur-sm rounded-2xl shadow-lg border border-border/50 p-6 hover:border-primary/50 card-interactive cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/10"
           >
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <p className="text-muted-foreground text-sm font-medium mb-2">{stat.title}</p>
-                <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+                <p className="text-3xl font-bold text-foreground group-hover:scale-105 transition-transform duration-200">
+                  {stat.value}
+                </p>
               </div>
-              <div className={`${stat.bgColor} p-4 rounded-xl`}>
-                <div className={`bg-gradient-to-br ${stat.gradient} p-2 rounded-lg`}>
+              <div className={`${stat.bgColor} p-4 rounded-xl group-hover:scale-110 transition-transform duration-200`}>
+                <div className={`bg-gradient-to-br ${stat.gradient} p-3 rounded-xl shadow-lg`}>
                   <stat.icon className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -242,8 +251,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Gráfico de Ventas Anuales */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-card rounded-xl shadow-lg border border-border p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-card/80 backdrop-blur-sm rounded-2xl shadow-lg border border-border/50 p-6 hover:border-primary/30 transition-all duration-300">
           <h2 className="text-xl font-bold text-foreground mb-4">Ventas por Mes - Comparativa Anual</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={ventasMensuales}>
@@ -258,9 +267,9 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-card rounded-xl shadow-lg border border-border p-6">
+        <div className="bg-card/80 backdrop-blur-sm rounded-2xl shadow-lg border border-border/50 p-6 hover:border-primary/30 transition-all duration-300">
           <h2 className="text-xl font-bold text-foreground mb-4">Ingresos por Mes - Comparativa Anual</h2>
-          <div className="mb-4 p-4 bg-primary/10 rounded-lg border border-primary/30">
+          <div className="mb-4 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/30 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Diferencia vs {anoPasado}:</span>
               <span

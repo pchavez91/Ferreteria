@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 import { User } from '@/lib/types'
 
 export default function DashboardLayout({
@@ -71,9 +72,11 @@ export default function DashboardLayout({
 
       setUser(usuario)
       
-      // Redirigir usuarios de caja directamente a POS
-      if (usuario.rol === 'caja' && pathname !== '/pos' && !pathname.startsWith('/pos')) {
-        router.push('/pos')
+      // Página de caja temporalmente deshabilitada
+      // Usuarios de caja no pueden acceder por ahora
+      if (usuario.rol === 'caja') {
+        await supabase.auth.signOut()
+        router.push('/login')
         return
       }
       
@@ -141,9 +144,19 @@ export default function DashboardLayout({
     }
   }, [router, pathname])
 
+  // Página de caja temporalmente deshabilitada - cerrar sesión si es usuario de caja
+  useEffect(() => {
+    if (user && user.rol === 'caja') {
+      supabase.auth.signOut().then(() => {
+        router.push('/login')
+      })
+    }
+  }, [user, router])
+
   // Efecto separado para manejar desconexión cuando user está disponible
   useEffect(() => {
     if (!user) return
+    if (user.rol === 'caja') return // No ejecutar para usuarios de caja
 
     // Detectar desconexión del navegador/ventana
     const handleBeforeUnload = () => {
@@ -234,11 +247,15 @@ export default function DashboardLayout({
     return null
   }
 
-  // Si es usuario de caja y no está en POS, mostrar loading mientras redirige
-  if (user.rol === 'caja' && pathname !== '/pos' && !pathname.startsWith('/pos')) {
+  // Página de caja temporalmente deshabilitada
+  // Si es usuario de caja, mostrar mensaje mientras se redirige
+  if (user.rol === 'caja') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-foreground">La funcionalidad de caja está temporalmente deshabilitada. Redirigiendo...</p>
+        </div>
       </div>
     )
   }
@@ -246,23 +263,29 @@ export default function DashboardLayout({
   // Layout especial para POS (sin sidebar)
   if (pathname === '/pos' || pathname.startsWith('/pos')) {
     return (
-      <div className="h-screen bg-background overflow-hidden">
+      <div className="h-screen bg-background flex flex-col relative">
         <Header user={user} />
-        {children}
+        <div className="flex-1 overflow-y-auto">
+          {children}
+        </div>
+        <Footer />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-background/50 overflow-hidden">
       <Sidebar user={user} currentPath={pathname || ''} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header user={user} />
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-6">
+        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-background via-background to-background/95">
+          <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full">
             {children}
           </div>
         </main>
+        <div className="mt-auto">
+          <Footer />
+        </div>
       </div>
     </div>
   )

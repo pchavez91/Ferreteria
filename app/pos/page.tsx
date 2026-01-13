@@ -2,15 +2,17 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import { Producto, Empresa } from '@/lib/types'
 import { 
   Search, Trash2, ShoppingCart, Plus, Building2, 
   CreditCard, Banknote, Receipt, X, Package,
-  ChevronLeft, ChevronRight, Minus
+  ChevronLeft, ChevronRight, Minus, LogOut
 } from 'lucide-react'
 import EmpresaModal from '@/components/EmpresaModal'
+import CierreTurnoModal from '@/components/CierreTurnoModal'
+import { User } from '@/lib/types'
 
 export default function POSPage() {
   const router = useRouter()
@@ -33,6 +35,8 @@ export default function POSPage() {
   const [tipoTarjeta, setTipoTarjeta] = useState<'debito' | 'credito'>('debito')
   const [showBoletaModal, setShowBoletaModal] = useState(false)
   const [ventaCompletada, setVentaCompletada] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [showCierreTurnoModal, setShowCierreTurnoModal] = useState(false)
   const carritoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -64,9 +68,61 @@ export default function POSPage() {
       .eq('id', session.user.id)
       .single()
 
-    if (!usuario || (usuario.rol !== 'caja' && usuario.rol !== 'admin')) {
+    // Página de caja temporalmente deshabilitada
+    // Solo admin puede acceder a POS por ahora
+    if (!usuario || usuario.rol !== 'admin') {
+      if (usuario?.rol === 'caja') {
+        // Cerrar sesión y redirigir al login con mensaje
+        await supabase.auth.signOut()
+        router.push('/login')
+        return
+      }
       router.push('/dashboard')
+      return
     }
+
+    // Actualizar sesión del usuario como activo
+    const ahora = new Date().toISOString()
+    const { data: sesionExistente } = await supabase
+      .from('sesiones_usuarios')
+      .select('hora_conexion, esta_activo')
+      .eq('usuario_id', usuario.id)
+      .single()
+
+    const horaInicioSesion = sesionExistente?.esta_activo && sesionExistente?.hora_conexion 
+      ? sesionExistente.hora_conexion 
+      : ahora
+
+    await supabase
+      .from('sesiones_usuarios')
+      .upsert({
+        usuario_id: usuario.id,
+        ultima_conexion: ahora,
+        hora_conexion: horaInicioSesion,
+        esta_activo: true,
+        updated_at: ahora,
+      }, {
+        onConflict: 'usuario_id'
+      })
+
+    setUser(usuario)
+  }
+
+  const handleLogout = () => {
+    if (user) {
+      setShowCierreTurnoModal(true)
+    }
+  }
+
+  const handleConfirmLogout = async () => {
+    if (user) {
+      await supabase
+        .from('sesiones_usuarios')
+        .update({ esta_activo: false, updated_at: new Date().toISOString() })
+        .eq('usuario_id', user.id)
+    }
+    await supabase.auth.signOut()
+    router.push('/login')
   }
 
   const loadProductos = async () => {
@@ -351,12 +407,22 @@ export default function POSPage() {
             <h1 className="text-2xl font-bold text-foreground">Punto de Venta (POS)</h1>
             <p className="text-sm text-muted-foreground">Sistema de ventas - Ferretería</p>
           </div>
-          <Link
-            href="/dashboard"
-            className="px-4 py-2 bg-accent hover:bg-accent/80 rounded-lg text-foreground transition-colors hover-lift"
+          <button
+            onClick={() => {
+              if (user) {
+                setShowCierreTurnoModal(true)
+              } else {
+                // Si no hay usuario, cerrar sesión directamente
+                supabase.auth.signOut().then(() => {
+                  router.push('/login')
+                })
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg font-medium transition-colors"
           >
-            Volver al Dashboard
-          </Link>
+            <LogOut className="w-4 h-4" />
+            <span>Cerrar Sesión</span>
+          </button>
         </div>
       </div>
 
@@ -1089,6 +1155,16 @@ function PagoModal({
           </button>
         </div>
       </div>
+
+      {/* Modal de Cierre de Turno - Renderizado con Portal para evitar problemas de overflow */}
+      {typeof window !== 'undefined' && showCierreTurnoModal && user && createPortal(
+        <CierreTurnoModal
+          user={user}
+          onClose={() => setShowCierreTurnoModal(false)}
+          onConfirmLogout={handleConfirmLogout}
+        />,
+        document.body
+      )}
     </div>
   )
 }
