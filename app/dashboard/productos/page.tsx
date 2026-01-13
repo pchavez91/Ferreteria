@@ -2,26 +2,47 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Producto, Categoria } from '@/lib/types'
-import { Plus, Search, Edit, Trash2, Package, ChevronUp, ChevronDown } from 'lucide-react'
+import { Producto, Categoria, User } from '@/lib/types'
+import { Plus, Search, Edit, Trash2, Package, ChevronUp, ChevronDown, X } from 'lucide-react'
 import ProductoModal from '@/components/ProductoModal'
+import CategoriaModal from '@/components/CategoriaModal'
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false)
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null)
+  const [selectedCategoria, setSelectedCategoria] = useState<Categoria | null>(null)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({
     key: 'nombre',
     direction: 'asc',
   })
 
   useEffect(() => {
+    loadUser()
     loadProductos()
     loadCategorias()
   }, [])
+
+  const loadUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data: usuario } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+        if (usuario) setUser(usuario)
+      }
+    } catch (error) {
+      console.error('Error loading user:', error)
+    }
+  }
 
   const loadProductos = async () => {
     try {
@@ -87,6 +108,34 @@ export default function ProductosPage() {
     loadProductos()
   }
 
+  const handleEditCategoria = (categoria: Categoria) => {
+    setSelectedCategoria(categoria)
+  }
+
+  const handleDeleteCategoria = async (id: string) => {
+    if (!confirm('¿Estás seguro de desactivar esta categoría?')) return
+
+    try {
+      const { error } = await supabase
+        .from('categorias')
+        .update({ activa: false })
+        .eq('id', id)
+
+      if (error) throw error
+      loadCategorias()
+    } catch (error: any) {
+      alert('Error al desactivar categoría: ' + (error.message || 'Error desconocido'))
+    }
+  }
+
+  const handleCategoriaModalClose = () => {
+    setIsCategoriaModalOpen(false)
+    setSelectedCategoria(null)
+    loadCategorias()
+  }
+
+  const isAdmin = user?.rol === 'admin'
+
   const handleSort = (key: string) => {
     setSortConfig((prev) => {
       if (prev.key === key) {
@@ -140,13 +189,24 @@ export default function ProductosPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-foreground">Productos</h1>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors shadow-lg"
-        >
-          <Plus className="w-5 h-5" />
-          Nuevo Producto
-        </button>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => setIsCategoriaModalOpen(true)}
+              className="flex items-center gap-2 bg-accent text-foreground px-4 py-2 rounded-lg hover:bg-accent/80 transition-colors border border-border"
+            >
+              <Plus className="w-5 h-5" />
+              Gestionar Categorías
+            </button>
+          )}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors shadow-lg"
+          >
+            <Plus className="w-5 h-5" />
+            Nuevo Producto
+          </button>
+        </div>
       </div>
 
       <div className="mb-6">
@@ -335,6 +395,146 @@ export default function ProductosPage() {
           onClose={handleModalClose}
         />
       )}
+
+      {isCategoriaModalOpen && user?.rol === 'admin' && (
+        <GestionCategoriasModal
+          categorias={categorias}
+          onClose={handleCategoriaModalClose}
+          onEdit={handleEditCategoria}
+          onDelete={handleDeleteCategoria}
+        />
+      )}
     </div>
+  )
+}
+
+// Componente para gestionar categorías
+function GestionCategoriasModal({
+  categorias,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  categorias: Categoria[]
+  onClose: () => void
+  onEdit: (categoria: Categoria) => void
+  onDelete: (id: string) => void
+}) {
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedCategoria, setSelectedCategoria] = useState<Categoria | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const filteredCategorias = categorias.filter((c) =>
+    c.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const handleEdit = (categoria: Categoria) => {
+    setSelectedCategoria(categoria)
+    setIsModalOpen(true)
+  }
+
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    setSelectedCategoria(null)
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-card rounded-xl max-w-4xl w-full max-h-[90vh] border border-border shadow-2xl flex flex-col">
+          <div className="p-6 border-b border-border flex justify-between items-center flex-shrink-0">
+            <h2 className="text-2xl font-bold text-foreground">Gestionar Categorías</h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-accent rounded-lg transition-colors"
+            >
+              <X size={20} className="text-foreground" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+                <input
+                  type="text"
+                  placeholder="Buscar categoría..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Plus size={20} />
+                Nueva Categoría
+              </button>
+            </div>
+
+            <div className="bg-accent/30 rounded-lg overflow-hidden border border-border">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-accent/50">
+                    <th className="text-left p-3 text-sm font-semibold text-foreground">Nombre</th>
+                    <th className="text-left p-3 text-sm font-semibold text-foreground">Descripción</th>
+                    <th className="text-left p-3 text-sm font-semibold text-foreground">Estado</th>
+                    <th className="text-left p-3 text-sm font-semibold text-foreground">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCategorias.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                        No se encontraron categorías
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCategorias.map((categoria) => (
+                      <tr key={categoria.id} className="border-b border-border hover:bg-accent/30 transition-colors">
+                        <td className="p-3 font-medium text-foreground">{categoria.nombre}</td>
+                        <td className="p-3 text-muted-foreground">{categoria.descripcion || '-'}</td>
+                        <td className="p-3">
+                          <span
+                            className={`px-2 py-1 text-xs font-semibold rounded border ${
+                              categoria.activa
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                : 'bg-red-500/20 text-red-400 border-red-500/30'
+                            }`}
+                          >
+                            {categoria.activa ? 'Activa' : 'Inactiva'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEdit(categoria)}
+                              className="text-primary hover:text-primary-400 transition-colors"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => onDelete(categoria.id)}
+                              className="text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isModalOpen && (
+        <CategoriaModal categoria={selectedCategoria} onClose={handleModalClose} />
+      )}
+    </>
   )
 }

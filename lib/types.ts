@@ -116,3 +116,36 @@ export interface PagoFactura {
   estado: 'pendiente' | 'pagado' | 'cancelado'
   created_at: string
 }
+
+export interface Empleado {
+  id: string
+  nombre_completo: string
+  rut: string
+  direccion?: string
+  telefono?: string
+  email?: string
+  fecha_nacimiento?: string
+  fecha_ingreso: string
+  fecha_termino?: string
+  activo: boolean
+  cargo?: string
+  observaciones?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Contrato {
+  id: string
+  empleado_id: string
+  empleado?: Empleado
+  tipo_contrato: 'indefinido' | 'plazo_fijo' | 'honorarios' | 'temporal'
+  fecha_inicio: string
+  fecha_termino?: string
+  sueldo_base: number
+  cargo: string
+  jornada?: 'completa' | 'parcial' | 'media'
+  descripcion?: string
+  estado: 'activo' | 'finalizado' | 'cancelado'
+  created_at: string
+  updated_at: string
+}

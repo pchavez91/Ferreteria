@@ -19,6 +19,7 @@ import {
   X,
   Receipt,
   Wallet,
+  UserCircle,
 } from 'lucide-react'
 import BoletaVentasModal from '@/components/BoletaVentasModal'
 import DejarDineroModal from '@/components/DejarDineroModal'
@@ -89,9 +90,9 @@ export default function Sidebar({ user, currentPath }: SidebarProps) {
       roles: ['admin'],
     },
     {
-      name: 'Configuración',
-      href: '/dashboard/configuracion',
-      icon: Settings,
+      name: 'Personal',
+      href: '/dashboard/personal',
+      icon: UserCircle,
       roles: ['admin'],
     },
   ]

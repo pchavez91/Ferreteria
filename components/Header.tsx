@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { User } from '@/lib/types'
@@ -12,7 +12,8 @@ import {
   Warehouse,
   CreditCard,
   Calculator,
-  ChevronDown
+  ChevronDown,
+  Clock
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -26,6 +27,14 @@ export default function Header({ user }: HeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [showCierreTurnoModal, setShowCierreTurnoModal] = useState(false)
+  const [currentDateTime, setCurrentDateTime] = useState(new Date())
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDateTime(new Date())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleLogout = () => {
     setShowCierreTurnoModal(true)
@@ -95,8 +104,22 @@ export default function Header({ user }: HeaderProps) {
               <RolIcon className="w-5 h-5" />
             </div>
             <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock size={12} className="text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  {currentDateTime.toLocaleDateString('es-CL', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long',
+                    year: 'numeric'
+                  })} {currentDateTime.toLocaleTimeString('es-CL', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false
+                  })}
+                </p>
+              </div>
               <p className="text-sm font-semibold text-foreground leading-tight">{user.nombre}</p>
-              <p className="text-xs text-muted-foreground font-medium">{rolInfo.label}</p>
             </div>
           </div>
           <button

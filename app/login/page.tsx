@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { LogIn, Loader2 } from 'lucide-react'
+import { LogIn, Loader2, Clock } from 'lucide-react'
 import Footer from '@/components/Footer'
 
 export default function LoginPage() {
@@ -12,7 +12,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [checkingSession, setCheckingSession] = useState(true)
+  const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const router = useRouter()
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDateTime(new Date())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Verificar si ya hay una sesión activa al cargar la página
   useEffect(() => {
@@ -130,6 +138,21 @@ export default function LoginPage() {
             </div>
             <h1 className="text-3xl font-bold text-foreground">Sistema de Ferretería</h1>
             <p className="text-muted-foreground mt-2">Inicia sesión para continuar</p>
+            <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
+              <Clock size={14} />
+              <span>
+                {currentDateTime.toLocaleDateString('es-CL', { 
+                  weekday: 'long', 
+                  day: 'numeric', 
+                  month: 'long',
+                  year: 'numeric'
+                })} {currentDateTime.toLocaleTimeString('es-CL', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: false
+                })}
+              </span>
+            </div>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
