@@ -230,7 +230,8 @@ export default function FinTurnoModal({ user, turnoId, onClose, onTurnoFinalizad
 
   const finalizarTurno = async (adminId: string) => {
     try {
-      const diferencia = montoTotal - (resumen.montoInicial + resumen.totalEfectivo)
+      const diferenciaEfectivo = montoTotal - (resumen.montoInicial + resumen.totalEfectivo)
+      const diferenciaTarjetas = montoTarjetasFisico - resumen.totalTarjeta
       const totalGeneral = montoTotal + montoTarjetasFisico
 
       // Crear detalles de dinero final PRIMERO (mientras tenemos la sesión del cajero)
@@ -260,11 +261,13 @@ export default function FinTurnoModal({ user, turnoId, onClose, onTurnoFinalizad
           fecha_fin: new Date().toISOString(),
           monto_final: totalGeneral, // Total general incluyendo tarjetas físicas
           total_ventas_efectivo: resumen.totalEfectivo,
-          total_ventas_tarjeta: resumen.totalTarjeta + montoTarjetasFisico, // Incluir tarjetas físicas
+          total_ventas_tarjeta: resumen.totalTarjeta,
           total_ventas_factura: resumen.totalFactura,
-          total_ventas: resumen.totalVentas + montoTarjetasFisico, // Incluir tarjetas físicas en total
-          diferencia: diferencia,
-          observaciones: montoTarjetasFisico > 0 ? `Tarjetas físicas: ${formatearPeso(montoTarjetasFisico)}` : null,
+          total_ventas: resumen.totalVentas,
+          diferencia: diferenciaEfectivo,
+          observaciones: montoTarjetasFisico > 0 
+            ? `Tarjetas físicas: ${formatearPeso(montoTarjetasFisico)} | Diferencia tarjetas: ${formatearPeso(diferenciaTarjetas)}`
+            : null,
           // No cambiamos el estado todavía, lo haremos después de verificar la contraseña
         })
         .eq('id', turnoId)
@@ -440,22 +443,49 @@ export default function FinTurnoModal({ user, turnoId, onClose, onTurnoFinalizad
                 </div>
               </div>
 
-              <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-foreground">Total en Caja (Efectivo):</span>
-                  <span className="text-2xl font-bold text-primary">{formatearPeso(montoTotal)}</span>
+              <div className="space-y-4">
+                {/* Resumen de Efectivo */}
+                <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-lg font-semibold text-foreground">Total en Caja (Efectivo):</span>
+                    <span className="text-2xl font-bold text-primary">{formatearPeso(montoTotal)}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>Monto Inicial: {formatearPeso(resumen.montoInicial)}</p>
+                    <p>Ventas en Efectivo: {formatearPeso(resumen.totalEfectivo)}</p>
+                    <p>Esperado en Efectivo: {formatearPeso(resumen.montoInicial + resumen.totalEfectivo)}</p>
+                    <p className="font-semibold text-foreground mt-2 pt-2 border-t border-primary/20">
+                      Diferencia (Efectivo): {formatearPeso(montoTotal - (resumen.montoInicial + resumen.totalEfectivo))}
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-2 text-sm text-muted-foreground">
-                  <p>Monto Inicial: {formatearPeso(resumen.montoInicial)}</p>
-                  <p>Ventas en Efectivo: {formatearPeso(resumen.totalEfectivo)}</p>
-                  <p>Tarjetas Físicas: {formatearPeso(montoTarjetasFisico)}</p>
-                  <p>Esperado (Efectivo): {formatearPeso(resumen.montoInicial + resumen.totalEfectivo)}</p>
-                  <p className="font-semibold text-foreground mt-1">
-                    Diferencia (Efectivo): {formatearPeso(montoTotal - (resumen.montoInicial + resumen.totalEfectivo))}
-                  </p>
-                  <p className="font-semibold text-primary mt-2">
-                    Total General: {formatearPeso(montoTotal + montoTarjetasFisico)}
-                  </p>
+
+                {/* Resumen de Tarjetas */}
+                <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-lg font-semibold text-foreground">Total en Tarjetas Físicas:</span>
+                    <span className="text-2xl font-bold text-blue-500">{formatearPeso(montoTarjetasFisico)}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>Ventas con Tarjeta: {formatearPeso(resumen.totalTarjeta)}</p>
+                    <p>Tarjetas Físicas Ingresadas: {formatearPeso(montoTarjetasFisico)}</p>
+                    <p className="font-semibold text-foreground mt-2 pt-2 border-t border-blue-500/20">
+                      Diferencia (Tarjetas): {formatearPeso(montoTarjetasFisico - resumen.totalTarjeta)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Total General */}
+                <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-foreground">Total General en Caja:</span>
+                    <span className="text-2xl font-bold text-green-500">{formatearPeso(montoTotal + montoTarjetasFisico)}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-2">
+                    <p>Efectivo: {formatearPeso(montoTotal)}</p>
+                    <p>Tarjetas Físicas: {formatearPeso(montoTarjetasFisico)}</p>
+                    <p className="text-xs mt-1">Total de Ventas: {formatearPeso(resumen.totalVentas)}</p>
+                  </div>
                 </div>
               </div>
             </div>
