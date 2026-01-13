@@ -13,6 +13,7 @@ import {
 import EmpresaModal from '@/components/EmpresaModal'
 import CierreTurnoModal from '@/components/CierreTurnoModal'
 import FinTurnoModal from '@/components/FinTurnoModal'
+import Footer from '@/components/Footer'
 import { User } from '@/lib/types'
 
 export default function POSPage() {
@@ -415,36 +416,59 @@ export default function POSPage() {
   )
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="bg-card border-b border-border px-6 py-4 shadow-lg">
+      <div className="bg-card border-b border-border px-6 py-4 shadow-lg flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Punto de Venta (POS)</h1>
-            <p className="text-sm text-muted-foreground">Sistema de ventas - Ferretería</p>
+            <p className="text-sm text-muted-foreground">
+              Sistema de ventas - Ferretería
+              {user && (
+                <span className="ml-2 text-foreground font-medium">
+                  • {user.nombre}
+                </span>
+              )}
+            </p>
           </div>
-          <button
-            onClick={() => {
-              if (user) {
-                if (user.rol === 'caja' && turnoActivo) {
-                  // Para cajeros, mostrar modal de terminar turno
-                  setShowFinTurnoModal(true)
+          <div className="flex items-center gap-2">
+            {user?.rol === 'admin' && (
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg font-medium transition-all duration-200 hover:shadow-md border border-primary/20"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Volver al Dashboard</span>
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (user) {
+                  if (user.rol === 'caja' && turnoActivo) {
+                    // Para cajeros, mostrar modal de terminar turno
+                    setShowFinTurnoModal(true)
+                  } else if (user.rol === 'admin') {
+                    // Para admin, mostrar modal de cierre de sesión
+                    setShowCierreTurnoModal(true)
+                  } else {
+                    // Otros roles, cerrar sesión directamente
+                    supabase.auth.signOut().then(() => {
+                      router.push('/login')
+                    })
+                  }
                 } else {
-                  // Para admin, mostrar modal de cierre de sesión
-                  setShowCierreTurnoModal(true)
+                  // Si no hay usuario, cerrar sesión directamente
+                  supabase.auth.signOut().then(() => {
+                    router.push('/login')
+                  })
                 }
-              } else {
-                // Si no hay usuario, cerrar sesión directamente
-                supabase.auth.signOut().then(() => {
-                  router.push('/login')
-                })
-              }
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg font-medium transition-all duration-200 hover:shadow-md border border-red-500/20"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>{user?.rol === 'caja' ? 'Terminar Turno' : 'Cerrar Sesión'}</span>
-          </button>
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg font-medium transition-all duration-200 hover:shadow-md border border-red-500/20"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>{user?.rol === 'caja' ? 'Terminar Turno' : 'Cerrar Sesión'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -799,6 +823,9 @@ export default function POSPage() {
           }}
         />
       )}
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

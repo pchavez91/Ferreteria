@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { User } from '@/lib/types'
 import { X, Save, Plus, Trash2, DollarSign } from 'lucide-react'
@@ -25,44 +25,48 @@ export default function InicioTurnoModal({ user, onClose, onTurnoIniciado }: Ini
   const [dineroItems, setDineroItems] = useState<DineroItem[]>([])
   const [montoTotal, setMontoTotal] = useState(0)
 
-  const calcularTotal = () => {
+  useEffect(() => {
     const total = dineroItems.reduce((sum, item) => {
-      return sum + (item.denominacion * item.cantidad)
+      return sum + (Number(item.denominacion) * Number(item.cantidad))
     }, 0)
     setMontoTotal(total)
-    return total
-  }
+  }, [dineroItems])
 
   const agregarItem = (tipo: 'billete' | 'moneda', denominacion: number) => {
-    const existe = dineroItems.find(item => item.tipo === tipo && item.denominacion === denominacion)
+    const existe = dineroItems.find(item => item.tipo === tipo && Number(item.denominacion) === Number(denominacion))
     if (existe) {
       setDineroItems(dineroItems.map(item =>
-        item.tipo === tipo && item.denominacion === denominacion
+        item.tipo === tipo && Number(item.denominacion) === Number(denominacion)
           ? { ...item, cantidad: item.cantidad + 1 }
           : item
       ))
     } else {
-      setDineroItems([...dineroItems, { tipo, denominacion, cantidad: 1 }])
+      setDineroItems([...dineroItems, { tipo, denominacion: Number(denominacion), cantidad: 1 }])
     }
-    setTimeout(calcularTotal, 0)
   }
 
   const actualizarCantidad = (tipo: 'billete' | 'moneda', denominacion: number, cantidad: number) => {
-    if (cantidad <= 0) {
-      setDineroItems(dineroItems.filter(item => !(item.tipo === tipo && item.denominacion === denominacion)))
+    const cantidadNum = Number(cantidad) || 0
+    const denominacionNum = Number(denominacion)
+    
+    if (cantidadNum <= 0) {
+      setDineroItems(dineroItems.filter(item => !(item.tipo === tipo && Number(item.denominacion) === denominacionNum)))
     } else {
-      setDineroItems(dineroItems.map(item =>
-        item.tipo === tipo && item.denominacion === denominacion
-          ? { ...item, cantidad }
-          : item
-      ))
+      const existe = dineroItems.find(item => item.tipo === tipo && Number(item.denominacion) === denominacionNum)
+      if (existe) {
+        setDineroItems(dineroItems.map(item =>
+          item.tipo === tipo && Number(item.denominacion) === denominacionNum
+            ? { ...item, cantidad: cantidadNum }
+            : item
+        ))
+      } else {
+        setDineroItems([...dineroItems, { tipo, denominacion: denominacionNum, cantidad: cantidadNum }])
+      }
     }
-    setTimeout(calcularTotal, 0)
   }
 
   const eliminarItem = (tipo: 'billete' | 'moneda', denominacion: number) => {
-    setDineroItems(dineroItems.filter(item => !(item.tipo === tipo && item.denominacion === denominacion)))
-    setTimeout(calcularTotal, 0)
+    setDineroItems(dineroItems.filter(item => !(item.tipo === tipo && Number(item.denominacion) === Number(denominacion))))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
