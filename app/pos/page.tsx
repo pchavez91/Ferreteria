@@ -1157,7 +1157,7 @@ function PagoModal({
       </div>
 
       {/* Modal de Cierre de Turno - Renderizado con Portal para evitar problemas de overflow */}
-      {typeof window !== 'undefined' && showCierreTurnoModal && user && createPortal(
+      {showCierreTurnoModal && user && typeof window !== 'undefined' && createPortal(
         <CierreTurnoModal
           user={user}
           onClose={() => setShowCierreTurnoModal(false)}
