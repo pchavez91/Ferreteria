@@ -3,7 +3,6 @@ import {
 	Linkedin,
 	Mail,
 	Code,
-	FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -34,11 +33,6 @@ export function MinimalFooter() {
 			href: 'https://github.com/pchavez91/ferreteria',
 			icon: <Code className="size-3" />,
 		},
-		{
-			title: 'Licencia MIT',
-			href: 'https://github.com/pchavez91/ferreteria',
-			icon: <FileText className="size-3" />,
-		},
 	];
 
 	return (
@@ -51,7 +45,16 @@ export function MinimalFooter() {
 							Sistema de Gestión
 						</h3>
 						<p className="text-sm text-muted-foreground leading-relaxed">
-							Sistema completo de gestión para ferretería desarrollado con Next.js, TypeScript y Supabase.
+							Sistema completo de gestión para ferretería desarrollado por{' '}
+							<a 
+								href="https://github.com/pchavez91" 
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-primary hover:underline font-medium"
+							>
+								Patricio Chávez
+							</a>
+							{' '}con Next.js, TypeScript y Supabase.
 						</p>
 					</div>
 
@@ -102,19 +105,14 @@ export function MinimalFooter() {
 
 				{/* Copyright */}
 				<div className="border-t border-border/30 pt-6">
-					<div className="flex flex-col md:flex-row items-center justify-between gap-4">
-						<p className="text-sm text-muted-foreground text-center md:text-left">
-							© {year} Ferretería. Todos los derechos reservados.
-						</p>
-						<p className="text-sm text-muted-foreground text-center md:text-right">
-							Desarrollado por{' '}
+					<div className="flex items-center justify-center">
+						<p className="text-sm text-muted-foreground text-center">
+							© {year} Patricio Chávez. ¿Necesitas adaptarlo para tu negocio?{' '}
 							<a 
-								href="https://github.com/pchavez91" 
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-primary hover:underline font-medium"
+								href="mailto:pchavez.dev@gmail.com" 
+								className="text-primary hover:underline"
 							>
-								Patricio Chávez
+								Contáctame
 							</a>
 						</p>
 					</div>
