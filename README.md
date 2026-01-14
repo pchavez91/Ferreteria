@@ -2,6 +2,14 @@
 
 Sistema completo de gestión empresarial desarrollado para administrar una ferretería, incluyendo punto de venta, control de inventario, facturación, gestión de empleados, sistema de turnos para cajeros y reportes. Construido con tecnologías modernas y pensado para ser escalable y fácil de usar.
 
+## 🌐 Demo en Vivo
+
+**¿Quieres ver el sistema en acción sin instalar nada?**
+
+👉 **[Ver Demo en Vivo](https://ferreteria-blue.vercel.app)**
+
+Puedes explorar todas las funcionalidades del sistema con las credenciales de prueba que encontrarás más abajo en este README.
+
 > **⚠️ Nota Importante:** Este sistema fue desarrollado específicamente para una ferretería. Si necesitas adaptarlo para tu negocio o implementarlo en otro tipo de comercio, por favor comunícate conmigo para discutir los requerimientos y costos de personalización. Puedes contactarme en **pchavez.dev@gmail.com** o a través de [GitHub](https://github.com/pchavez91).
 
 ## 🚀 Características Principales
