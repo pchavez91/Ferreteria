@@ -41,6 +41,8 @@ export default function POSPage() {
   const [showCierreTurnoModal, setShowCierreTurnoModal] = useState(false)
   const [showFinTurnoModal, setShowFinTurnoModal] = useState(false)
   const [turnoActivo, setTurnoActivo] = useState<any>(null)
+  const [showStockModal, setShowStockModal] = useState(false)
+  const [stockMaximo, setStockMaximo] = useState<{ nombre: string; stock: number } | null>(null)
   const carritoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,14 +52,22 @@ export default function POSPage() {
   }, [])
 
   useEffect(() => {
-    // Scroll automático al agregar productos
+    // Scroll automático para mostrar siempre el último producto agregado arriba
     if (carritoRef.current && carrito.length > 0) {
-      const lastItem = carritoRef.current.lastElementChild as HTMLElement
-      if (lastItem) {
-        lastItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      }
+      // Esperar un momento para que el DOM se actualice
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (carritoRef.current) {
+            // Scroll al inicio (arriba) para mostrar el último producto agregado
+            carritoRef.current.scrollTo({
+              top: 0,
+              behavior: 'smooth'
+            })
+          }
+        }, 50)
+      })
     }
-  }, [carrito])
+  }, [carrito.length]) // Solo cuando cambia la cantidad de productos
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -177,16 +187,20 @@ export default function POSPage() {
     const existe = carrito.find((item) => item.producto.id === producto.id)
     if (existe) {
       if (existe.cantidad < producto.stock) {
-        setCarrito(
-          carrito.map((item) =>
-            item.producto.id === producto.id
-              ? { ...item, cantidad: item.cantidad + 1 }
-              : item
-          )
-        )
+        // Mover el producto al principio de la lista para que se vea arriba
+        const otrosItems = carrito.filter((item) => item.producto.id !== producto.id)
+        setCarrito([
+          { ...existe, cantidad: existe.cantidad + 1 },
+          ...otrosItems
+        ])
+      } else {
+        // Mostrar modal de stock máximo
+        setStockMaximo({ nombre: producto.nombre, stock: producto.stock })
+        setShowStockModal(true)
       }
     } else {
-      setCarrito([...carrito, { producto, cantidad: 1 }])
+      // Agregar nuevo producto al principio para que se vea arriba
+      setCarrito([{ producto, cantidad: 1 }, ...carrito])
     }
   }
 
@@ -196,12 +210,19 @@ export default function POSPage() {
 
   const actualizarCantidad = (productoId: string, cantidad: number) => {
     const item = carrito.find((item) => item.producto.id === productoId)
-    if (item && cantidad > 0 && cantidad <= item.producto.stock) {
-      setCarrito(
-        carrito.map((item) =>
-          item.producto.id === productoId ? { ...item, cantidad } : item
-        )
-      )
+    if (item) {
+      if (cantidad > 0 && cantidad <= item.producto.stock) {
+        // Mover el producto actualizado al principio de la lista para que se vea arriba
+        const otrosItems = carrito.filter((item) => item.producto.id !== productoId)
+        setCarrito([
+          { ...item, cantidad },
+          ...otrosItems
+        ])
+      } else if (cantidad > item.producto.stock) {
+        // Mostrar modal con stock máximo
+        setStockMaximo({ nombre: item.producto.nombre, stock: item.producto.stock })
+        setShowStockModal(true)
+      }
     }
   }
 
@@ -527,8 +548,8 @@ export default function POSPage() {
           </div>
 
         {/* Columna 2: Carrito de Compras */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col bg-card rounded-xl border border-border shadow-xl overflow-hidden">
-          <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-primary/5">
+        <div className="col-span-12 lg:col-span-4 flex flex-col bg-card rounded-xl border border-border shadow-xl overflow-hidden h-full">
+          <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-primary/5 flex-shrink-0">
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" />
               Carrito de Compras
@@ -540,7 +561,7 @@ export default function POSPage() {
             </h2>
           </div>
 
-          <div ref={carritoRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div ref={carritoRef} className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
             {carrito.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <ShoppingCart className="w-16 h-16 mb-3 opacity-30" />
@@ -583,12 +604,17 @@ export default function POSPage() {
                       <input
                         type="number"
                         value={item.cantidad}
-                        onChange={(e) =>
-                          actualizarCantidad(item.producto.id, parseInt(e.target.value) || 1)
-                        }
-                        className="w-12 text-center bg-input border border-border rounded text-foreground text-xs font-semibold"
+                        onChange={(e) => {
+                          const valor = e.target.value
+                          // Permitir hasta 4 dígitos
+                          if (valor === '' || (valor.length <= 4 && !isNaN(Number(valor)))) {
+                            actualizarCantidad(item.producto.id, parseInt(valor) || 1)
+                          }
+                        }}
+                        className="w-16 px-2 py-1 text-center bg-input border border-border rounded text-foreground text-xs font-semibold"
                         min="1"
                         max={item.producto.stock}
+                        maxLength={4}
                       />
                       <button
                         onClick={() => actualizarCantidad(item.producto.id, item.cantidad + 1)}
@@ -607,88 +633,89 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* Columna 3: Totales y Métodos de Pago */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col bg-card rounded-xl border border-border shadow-xl overflow-hidden p-4">
+        {/* Columna 3: Totales y Métodos de Pago - Fija */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col bg-card rounded-xl border border-border shadow-xl overflow-hidden">
+          <div className="flex flex-col h-full p-4">
             {carrito.length > 0 ? (
               <>
                 {/* Totales */}
-                <div className="space-y-3 border-b border-border pb-4">
-                  <h2 className="text-lg font-bold text-foreground">Resumen de Venta</h2>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal:</span>
-                      <span className="font-semibold text-foreground">{formatearPeso(calcularSubtotal())}</span>
-                    </div>
+                <div className="space-y-3 border-b border-border pb-4 flex-shrink-0">
+                    <h2 className="text-lg font-bold text-foreground">Resumen de Venta</h2>
                     
-                    <div>
-                      <label className="block text-xs font-medium text-foreground mb-1">
-                        Descuento (CLP):
-                      </label>
-                      <input
-                        type="number"
-                        value={descuento}
-                        onChange={(e) => setDescuento(e.target.value)}
-                        className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground text-sm"
-                        min="0"
-                        step="1"
-                        placeholder="0"
-                      />
-                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span className="font-semibold text-foreground">{formatearPeso(calcularSubtotal())}</span>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-foreground mb-1">
+                          Descuento (CLP):
+                        </label>
+                        <input
+                          type="number"
+                          value={descuento}
+                          onChange={(e) => setDescuento(e.target.value)}
+                          className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground text-sm"
+                          min="0"
+                          step="1"
+                          placeholder="0"
+                        />
+                      </div>
 
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">IVA (19%):</span>
-                      <span className="font-semibold text-foreground">{formatearPeso(calcularIVA())}</span>
-                    </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">IVA (19%):</span>
+                        <span className="font-semibold text-foreground">{formatearPeso(calcularIVA())}</span>
+                      </div>
 
-                    <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                      <span className="text-foreground">Total:</span>
-                      <span className="text-primary">{formatearPeso(calcularTotal())}</span>
+                      <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
+                        <span className="text-foreground">Total:</span>
+                        <span className="text-primary">{formatearPeso(calcularTotal())}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
                 {/* Métodos de Pago */}
-                <div className="flex-1 flex flex-col">
+                <div className="flex flex-col mt-4 flex-shrink-0">
                   <h3 className="text-lg font-bold text-foreground mb-3">Método de Pago</h3>
                   
                   <div className="grid grid-cols-3 gap-2 mb-4">
-                    <button
-                      onClick={() => handleSeleccionarPago('efectivo')}
-                      className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
-                        tipoPago === 'efectivo'
-                          ? 'border-primary bg-primary/20 shadow-lg'
-                          : 'border-border bg-accent/30 hover:border-primary/50'
-                      }`}
-                    >
-                      <Banknote className="w-6 h-6 mb-1 text-primary" />
-                      <div className="text-xs font-medium text-foreground">Efectivo</div>
-                    </button>
+                      <button
+                        onClick={() => handleSeleccionarPago('efectivo')}
+                        className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
+                          tipoPago === 'efectivo'
+                            ? 'border-primary bg-primary/20 shadow-lg'
+                            : 'border-border bg-accent/30 hover:border-primary/50'
+                        }`}
+                      >
+                        <Banknote className="w-6 h-6 mb-1 text-primary" />
+                        <div className="text-xs font-medium text-foreground">Efectivo</div>
+                      </button>
 
-                    <button
-                      onClick={() => handleSeleccionarPago('tarjeta')}
-                      className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
-                        tipoPago === 'tarjeta'
-                          ? 'border-primary bg-primary/20 shadow-lg'
-                          : 'border-border bg-accent/30 hover:border-primary/50'
-                      }`}
-                    >
-                      <CreditCard className="w-6 h-6 mb-1 text-primary" />
-                      <div className="text-xs font-medium text-foreground">Tarjeta</div>
-                    </button>
+                      <button
+                        onClick={() => handleSeleccionarPago('tarjeta')}
+                        className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
+                          tipoPago === 'tarjeta'
+                            ? 'border-primary bg-primary/20 shadow-lg'
+                            : 'border-border bg-accent/30 hover:border-primary/50'
+                        }`}
+                      >
+                        <CreditCard className="w-6 h-6 mb-1 text-primary" />
+                        <div className="text-xs font-medium text-foreground">Tarjeta</div>
+                      </button>
 
-                    <button
-                      onClick={() => handleSeleccionarPago('factura')}
-                      className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
-                        tipoPago === 'factura'
-                          ? 'border-primary bg-primary/20 shadow-lg'
-                          : 'border-border bg-accent/30 hover:border-primary/50'
-                      }`}
-                    >
-                      <Receipt className="w-6 h-6 mb-1 text-primary" />
-                      <div className="text-xs font-medium text-foreground">Factura</div>
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => handleSeleccionarPago('factura')}
+                        className={`p-3 rounded-lg border-2 transition-all hover-lift flex flex-col items-center ${
+                          tipoPago === 'factura'
+                            ? 'border-primary bg-primary/20 shadow-lg'
+                            : 'border-border bg-accent/30 hover:border-primary/50'
+                        }`}
+                      >
+                        <Receipt className="w-6 h-6 mb-1 text-primary" />
+                        <div className="text-xs font-medium text-foreground">Factura</div>
+                      </button>
+                    </div>
 
                   {tipoPago === 'factura' && (
                     <div className="mb-4 space-y-2">
@@ -747,6 +774,7 @@ export default function POSPage() {
                 <p className="text-sm">Agrega productos para ver el resumen</p>
               </div>
             )}
+          </div>
         </div>
       </div>
 
@@ -822,6 +850,43 @@ export default function POSPage() {
             router.push('/caja/inicio-turno')
           }}
         />
+      )}
+
+      {/* Modal de Stock Máximo */}
+      {showStockModal && stockMaximo && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-xl max-w-md w-full border border-border shadow-2xl animate-fadeIn">
+            <div className="border-b border-border px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-foreground">Stock Insuficiente</h2>
+              <button 
+                onClick={() => {
+                  setShowStockModal(false)
+                  setStockMaximo(null)
+                }} 
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-foreground mb-4">
+                El producto <span className="font-semibold">{stockMaximo.nombre}</span> tiene un stock máximo de{' '}
+                <span className="font-bold text-primary">{stockMaximo.stock}</span> unidades disponibles.
+              </p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowStockModal(false)
+                    setStockMaximo(null)
+                  }}
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-600 transition-colors"
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Footer */}
