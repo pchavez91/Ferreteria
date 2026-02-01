@@ -4,13 +4,16 @@ Sistema completo de gestión empresarial desarrollado para administrar una ferre
 
 ## 🌐 Demo en Vivo
 
-**¿Quieres ver el sistema en acción sin instalar nada?**
+¿Quieres ver el sistema en acción sin instalar nada?
 
-👉 **[Ver Demo en Vivo](https://ferreteria-blue.vercel.app)**
+👉 [Ver Demo en Vivo](https://ferreteria-blue.vercel.app)
 
 Puedes explorar todas las funcionalidades del sistema con las credenciales de prueba que encontrarás más abajo en este README.
 
-> **⚠️ Nota Importante:** Este sistema fue desarrollado específicamente para una ferretería. Si necesitas adaptarlo para tu negocio o implementarlo en otro tipo de comercio, por favor comunícate conmigo para discutir los requerimientos y costos de personalización. Puedes contactarme en **pchavez.dev@gmail.com** o a través de [GitHub](https://github.com/pchavez91).
+📢 Nota sobre el Demo en Vivo: Este proyecto utiliza Supabase (Tier Gratuito) para la base de datos y autenticación. Debido a las políticas de la plataforma, la base de datos se suspende automáticamente si no recibe tráfico durante 7 días. 
+Si al intentar probar el sistema encuentras un error de conexión o no puedes iniciar sesión, por favor contáctame a pchavez.dev@gmail.com para reactivarla de inmediato.
+
+⚠️ Nota Importante: Este sistema fue desarrollado específicamente para una ferretería. Si necesitas adaptarlo para tu negocio o implementarlo en otro tipo de comercio,por favor comunícate conmigo para discutir los requerimientos y costos de personalización. Puedes contactarme en pchavez.dev@gmail.com o a través de [GitHub](https://github.com/pchavez91).
 
 ## 🚀 Características Principales
 
@@ -121,12 +124,12 @@ Para probar el sistema con datos realistas:
 - Contraseña: `bodega123`
 - Copia el **User UID** generado
 
-**Usuario Contabilidad:**
+Usuario Contabilidad:
 - Email: `contabilidad@ferreteria.com`
 - Contraseña: `contabilidad123`
 - Copia el **User UID** generado
 
-3. Ve a **SQL Editor** y ejecuta (reemplaza los UUIDs con los que copiaste):
+3. Ve a SQL Editor y ejecuta (reemplaza los UUIDs con los que copiaste):
 
 ```sql
 -- Administrador
@@ -237,9 +240,9 @@ El sistema incluye 4 roles diferentes con flujos específicos:
 
 ### 👨‍💼 Administrador
 
-**Acceso completo a todas las funcionalidades.**
+Acceso completo a todas las funcionalidades.
 
-**Flujo de trabajo:**
+Flujo de trabajo:
 1. Inicia sesión con email y contraseña
 2. Accede al Dashboard principal con estadísticas
 3. Puede navegar a:
@@ -254,7 +257,7 @@ El sistema incluye 4 roles diferentes con flujos específicos:
    - **POS:** Puede acceder al punto de venta como administrador
 4. Puede cerrar sesión desde el Header, mostrando un resumen de su sesión
 
-**Funcionalidades exclusivas:**
+Funcionalidades exclusivas:
 - Ver y editar todos los usuarios
 - Gestionar categorías de productos
 - Gestionar empleados y contratos
@@ -263,9 +266,9 @@ El sistema incluye 4 roles diferentes con flujos específicos:
 
 ### 💰 Cajero
 
-**Sistema de turnos con control de dinero en caja.**
+Sistema de turnos con control de dinero en caja.
 
-**Flujo de trabajo:**
+Flujo de trabajo:
 1. Inicia sesión con email y contraseña
 2. Es redirigido automáticamente a la página de **Inicio de Turno**
 3. Debe completar el formulario de inicio de turno:
@@ -289,7 +292,7 @@ El sistema incluye 4 roles diferentes con flujos específicos:
    - Iniciar un nuevo turno
    - Cerrar sesión completamente
 
-**Características:**
+Características:
 - Solo puede iniciar un turno a la vez
 - El sistema controla que haya un turno activo antes de permitir ventas
 - Todas las ventas quedan asociadas al turno
@@ -297,9 +300,9 @@ El sistema incluye 4 roles diferentes con flujos específicos:
 
 ### 📦 Bodega
 
-**Gestión de inventario y movimientos de bodega.**
+Gestión de inventario y movimientos de bodega.
 
-**Flujo de trabajo:**
+Flujo de trabajo:
 1. Inicia sesión con email y contraseña
 2. Accede al Dashboard
 3. Puede navegar a:
@@ -312,7 +315,7 @@ El sistema incluye 4 roles diferentes con flujos específicos:
    - Ver historial completo de movimientos
 5. Puede cerrar sesión desde el Header
 
-**Restricciones:**
+Restricciones:
 - No puede acceder al POS
 - No puede gestionar usuarios
 - No puede gestionar empleados
@@ -320,9 +323,9 @@ El sistema incluye 4 roles diferentes con flujos específicos:
 
 ### 📊 Contabilidad
 
-**Visualización de ventas, facturas y reportes.**
+Visualización de ventas, facturas y reportes.
 
-**Flujo de trabajo:**
+Flujo de trabajo:
 1. Inicia sesión con email y contraseña
 2. Accede al Dashboard
 3. Puede navegar a:
@@ -333,7 +336,7 @@ El sistema incluye 4 roles diferentes con flujos específicos:
 4. Puede ver reportes y estadísticas pero no modificar datos
 5. Puede cerrar sesión desde el Header
 
-**Restricciones:**
+Restricciones:
 - No puede acceder al POS
 - No puede gestionar productos
 - No puede gestionar usuarios
@@ -394,24 +397,24 @@ El sistema incluye 4 roles diferentes con flujos específicos:
 
 ## 🐛 Solución de Problemas
 
-**Error de autenticación:**
+Error de autenticación:
 - Verifica que las variables de entorno estén correctamente configuradas
 - Asegúrate de que el usuario exista tanto en Authentication como en la tabla `usuarios`
 
-**Error de permisos (RLS):**
+Error de permisos (RLS):
 - Verifica que hayas ejecutado todos los archivos de schema y `supabase/rls_policies.sql`
 - Asegúrate de que el usuario tenga el rol correcto en la tabla `usuarios`
 
-**Error al crear ventas:**
+Error al crear ventas:
 - Verifica que las políticas RLS estén correctamente configuradas
 - Revisa la consola del navegador para ver errores específicos
 
-**Cajero no puede iniciar turno:**
+Cajero no puede iniciar turno:
 - Verifica que se haya ejecutado `supabase/turnos_caja_schema.sql`
 - Asegúrate de que el cajero tenga un turno activo en la tabla `turnos_caja`
 
-**Error al finalizar turno:**
-- Verifica que hayas ingresado la clave correcta: **1234**
+Error al finalizar turno:
+- Verifica que hayas ingresado la clave correcta: 1234
 - Asegúrate de que el cajero tenga una sesión activa
 
 ## 📄 Licencia
